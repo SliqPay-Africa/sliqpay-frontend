@@ -1,0 +1,95 @@
+import { NextResponse, NextRequest } from 'next/server';
+import { cspMiddleware } from './middleware/csp';
+
+// Toggle auth guard globally (disabled for now per requirements)
+const DISABLE_AUTH_GUARD = true;
+
+// Routes that would require auth (kept for future use)
+const protectedPrefixes = ['/dashboard'];
+// API routes that would require auth (kept for future use)
+const protectedApiRoutes = ['/api/v1/accounts', '/api/v1/transactions'];
+// Auth pages that redirect to dashboard if already logged in (login/signup removed)
+const authPages: string[] = [];
+// Auth pages that are always accessible (login/signup now public, password reset kept)
+const publicAuthPages = ['/auth/forgotpassword', '/auth/resetpassword', '/auth/login', '/auth/signup'];
+// Public API routes (login/signup removed from backend)
+const publicApiRoutes = ['/api/v1/auth/forgotpassword', '/api/v1/auth/resetpassword'];
+
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const token = req.cookies.get('accessToken');
+  const isAuthed = !!token;
+
+  // If accessing protected route while not authenticated -> redirect to login
+  // Disabled for now: dashboard and other pages are publicly accessible
+  if (!DISABLE_AUTH_GUARD) {
+    if (protectedPrefixes.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+      if (!isAuthed) {
+        const url = req.nextUrl.clone();
+        url.pathname = '/auth/login';
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
+  // If accessing protected API route while not authenticated -> return 401
+  if (!DISABLE_AUTH_GUARD) {
+    if (protectedApiRoutes.some(p => pathname.startsWith(p)) && !publicApiRoutes.includes(pathname)) {
+      if (!isAuthed) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+  }
+
+  // If authenticated and hits auth page (except reset pages) -> redirect to dashboard
+  if (isAuthed && authPages.includes(pathname) && !publicAuthPages.includes(pathname)) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
+  }
+
+  // Apply CSP headers to the response
+  const response = NextResponse.next();
+  
+  // Define CSP directives
+  const csp = [
+    // Default policy for all content
+    "default-src 'self'",
+
+    // Allow scripts from self, inline scripts, and unsafe-eval (needed for Next.js dev)
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+
+    // Allow styles from self, inline styles, and Google Fonts
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+
+    // For images - allow self, data URIs, blob, and external images
+    "img-src 'self' data: blob: https:",
+
+    // For fonts - allow self and Google Fonts
+    "font-src 'self' https://fonts.gstatic.com",
+
+    // For connections - allow self, external APIs, Magic.link, and localhost in development
+    "connect-src 'self' https: http://localhost:* http://localhost:4000 https://auth.magic.link https://api.magic.link",
+
+    // Allow iframes from Magic.link for authentication
+    "frame-src 'self' https://auth.magic.link https://verify.magic.link",
+
+    // Block embedding in frames except from same origin
+    "frame-ancestors 'self'",
+
+    // Allow forms to be submitted only to same origin
+    "form-action 'self'",
+
+    // Block plugins like Flash, Java, etc.
+    "object-src 'none'",
+  ].join("; ");
+
+  // Set the CSP header
+  response.headers.set('Content-Security-Policy', csp);
+  
+  return response;
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/auth/:path*', '/api/v1/:path*', '/']
+};

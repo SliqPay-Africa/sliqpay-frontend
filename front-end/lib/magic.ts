@@ -1,0 +1,143 @@
+import { Magic } from 'magic-sdk';
+
+// Chain configurations for multi-chain support
+export const chains = {
+  moonbase: {
+    name: 'Moonbase Alpha',
+    rpcUrl: 'https://rpc.api.moonbase.moonbeam.network',
+    chainId: 1287,
+    explorer: 'https://moonbase.moonscan.io',
+  },
+  polygon: {
+    name: 'Polygon',
+    rpcUrl: 'https://polygon-rpc.com',
+    chainId: 137,
+    explorer: 'https://polygonscan.com',
+  },
+  ethereum: {
+    name: 'Ethereum',
+    rpcUrl: process.env.NEXT_PUBLIC_ETHEREUM_RPC || 'https://eth.llamarpc.com',
+    chainId: 1,
+    explorer: 'https://etherscan.io',
+  },
+  arbitrum: {
+    name: 'Arbitrum',
+    rpcUrl: 'https://arb1.arbitrum.io/rpc',
+    chainId: 42161,
+    explorer: 'https://arbiscan.io',
+  },
+  base: {
+    name: 'Base',
+    rpcUrl: 'https://mainnet.base.org',
+    chainId: 8453,
+    explorer: 'https://basescan.org',
+  },
+  optimism: {
+    name: 'Optimism',
+    rpcUrl: 'https://mainnet.optimism.io',
+    chainId: 10,
+    explorer: 'https://optimistic.etherscan.io',
+  },
+} as const;
+
+export type ChainKey = keyof typeof chains;
+
+// Default chain (Moonbase Alpha for SliqPay)
+const defaultChain = chains.moonbase;
+
+// Initialize Magic instance (client-side only)
+export const magic =
+  typeof window !== 'undefined'
+    ? new Magic(process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY!, {
+        network: {
+          rpcUrl: defaultChain.rpcUrl,
+          chainId: defaultChain.chainId,
+        },
+      })
+    : null;
+
+// Helper function to get user's wallet address
+export const getWalletAddress = async (): Promise<string | null> => {
+  if (!magic) return null;
+
+  try {
+    const isLoggedIn = await magic.user.isLoggedIn();
+    if (!isLoggedIn) return null;
+
+    const metadata = await magic.user.getInfo();
+
+    // Extract address from publicAddress or issuer field
+    let address = metadata.publicAddress;
+    if (!address && metadata.issuer) {
+      const match = metadata.issuer.match(/0x[a-fA-F0-9]{40}/);
+      address = match ? match[0] : null;
+    }
+
+    return address || null;
+  } catch (error) {
+    console.error('Error getting wallet address:', error);
+    return null;
+  }
+};
+
+// Helper function to get full user metadata
+export const getUserMetadata = async () => {
+  if (!magic) return null;
+
+  try {
+    const isLoggedIn = await magic.user.isLoggedIn();
+    if (!isLoggedIn) return null;
+
+    return await magic.user.getInfo();
+  } catch (error) {
+    console.error('Error getting user metadata:', error);
+    return null;
+  }
+};
+
+// Helper function to logout
+export const magicLogout = async (): Promise<void> => {
+  if (!magic) return;
+
+  try {
+    await magic.user.logout();
+  } catch (error) {
+    console.error('Error logging out:', error);
+  }
+};
+
+// Helper function to check if user is authenticated
+export const isAuthenticated = async (): Promise<boolean> => {
+  if (!magic) return false;
+
+  try {
+    return await magic.user.isLoggedIn();
+  } catch (error) {
+    console.error('Error checking authentication:', error);
+    return false;
+  }
+};
+
+// Format wallet address (0x1234...5678)
+export const formatAddress = (address: string): string => {
+  if (!address) return '';
+  return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+};
+
+// Get chain configuration by key
+export const getChainConfig = (chainKey: ChainKey) => {
+  return chains[chainKey];
+};
+
+// Switch network (requires re-initialization of Magic instance)
+export const switchNetwork = (chainKey: ChainKey): Magic | null => {
+  if (typeof window === 'undefined') return null;
+
+  const chain = chains[chainKey];
+  return new Magic(process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY!, {
+    network: {
+      rpcUrl: chain.rpcUrl,
+      chainId: chain.chainId,
+    },
+  });
+};

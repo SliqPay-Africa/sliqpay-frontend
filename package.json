@@ -1,0 +1,48 @@
+{
+  "name": "sliqpay",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "front-end"
+  ],
+  
+  "scripts": {
+    "dev": "npm run dev -w front-end",
+    
+    
+    "build": "npm run build -w front-end ",
+    
+    
+    "start": "npm run start ",
+    
+   
+    "lint": "npm run lint ",
+    "typecheck": "npm run typecheck "
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.1",
+    "@lucia-auth/adapter-prisma": "^4.0.1",
+    "@prisma/client": "^5.17.0",
+    "@supabase/supabase-js": "^2.57.4",
+    "@tailwindcss/vite": "^4.1.11",
+    "lucia": "^3.2.2",
+    "next": "15.3.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.62.0",
+    "react-icons": "^5.5.0",
+    "zod": "^4.0.14"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    
+    "eslint": "^9",
+    "eslint-config-next": "15.3.4",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5"
+  }
+}
