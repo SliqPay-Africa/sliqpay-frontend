@@ -37,12 +37,17 @@ export default function Step5() {
       // Get user data from context (collected in previous steps)
       // Generate unique phone number using timestamp to avoid duplicate constraint
       const uniquePhone = `+234${Date.now().toString().slice(-10)}`;
+      
+      // Extract clean sliqId from user context (remove @ and .sliq.eth)
+      const cleanSliqId = user?.sliqId?.replace('@', '').replace('.sliq.eth', '') || '';
+      
       const signupData = {
         fname: user?.name?.split(' ')[0] || 'User',
         lname: user?.name?.split(' ').slice(1).join(' ') || 'Account',
         email: user?.email || '',
         password: pw,
         phone: uniquePhone,
+        sliqId: cleanSliqId, // Pass the user's chosen SliqID
         refCode: undefined
       };
 
@@ -66,11 +71,12 @@ export default function Step5() {
       const data = await response.json();
       console.log('Signup successful:', data);
 
-      // Update user context with server response if needed
+      // Update user context with server response
       if (data.user) {
         updateUser({
           name: `${data.user.firstName} ${data.user.lastName}`,
-          email: data.user.email
+          email: data.user.email,
+          sliqId: data.user.sliqId // Update with the actual SliqID from backend
         });
       }
 
