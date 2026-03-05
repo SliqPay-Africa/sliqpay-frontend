@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { UserProvider } from '@/contexts/UserContext';
 import { MagicProvider } from '@/components/providers/MagicProvider';
 import { QueryProvider } from '@/components/providers/QueryProvider';
+import { Toaster } from '@/components/ui/toaster';
 
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default function RootLayout({
           <MagicProvider>
             <UserProvider>
               {children}
+              <Toaster />
             </UserProvider>
           </MagicProvider>
         </QueryProvider>
