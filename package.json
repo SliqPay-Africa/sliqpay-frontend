@@ -65,7 +65,7 @@
     "input-otp": "^1.2.4",
     "lucide-react": "^0.446.0",
     "magic-sdk": "^33.1.0",
-    "next": "15.3.4",
+    "next": "15.5.12",
     "next-themes": "^0.3.0",
     "pino": "^8.17.2",
     "pino-pretty": "^10.3.1",
