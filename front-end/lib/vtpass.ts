@@ -43,8 +43,6 @@ export interface VtpassVtuResponse {
   purchased_code: string;
 }
 
-import { env } from '@/lib/env';
-
 /**
  * Sends a VTU (airtime) request to the VTPass API
  * Documentation: https://vtpass.com/documentation/mtn-airtime-vtu-api/
@@ -56,6 +54,8 @@ import { env } from '@/lib/env';
  * - 400000000000: Simulates no response
  * - 300000000000: Simulates a timeout scenario
  * - Any other number: Simulates a failed transaction
+ * 
+ * NOTE: This should be moved to backend API for security
  */
 export async function sendVtu({ serviceID, phone, amount, request_id }: { serviceID: string; phone: string; amount: string | number; request_id: string }) {
   // Ensure amount is a string
@@ -67,7 +67,7 @@ export async function sendVtu({ serviceID, phone, amount, request_id }: { servic
     throw new Error(`Invalid phone number format: ${phone}`);
   }
   
-  const apiKey = env.VTPASS_API_KEY;
+  const apiKey = process.env.VTPASS_API_KEY || '';
   const publicKey = env.VTPASS_PUBLIC_KEY;
   const secretKey = env.VTPASS_SECRET_KEY;
   const baseUrl = env.VTPASS_BASE_URL;

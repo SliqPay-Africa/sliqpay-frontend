@@ -26,3 +26,4 @@ MIGRATION_NOTES.md
 
 # Auto-commit script (development tool)
 auto_commit.py
+.vercel
