@@ -1,5 +1,4 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { cspMiddleware } from './middleware/csp';
 
 // Toggle auth guard globally (disabled for now per requirements)
 const DISABLE_AUTH_GUARD = true;
