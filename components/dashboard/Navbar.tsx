@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { IoSettingsSharp } from "react-icons/io5";
 import { IoNotifications } from "react-icons/io5";
 import { useState } from 'react';
@@ -11,19 +11,17 @@ import { HiOutlineMenu } from "react-icons/hi";
 import { useUser } from "@/contexts/UserContext";
 
 export default function Navbar() {
-    const pathName = usePathname();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const { user, clearUser } = useUser();
-    const dashboard = pathName == "/dashboard";
-    const history = pathName.startsWith("/dashboard/history");
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     async function logout() {
       try {
         setLoading(true);
 
-        // Call backend logout endpoint
-        await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/logout`, {
+        // Use the Next.js API route (works on any port)
+        await fetch('/api/v1/auth/logout', {
           method: 'POST',
           credentials: 'include'
         });
@@ -50,14 +48,16 @@ export default function Navbar() {
     <header className="sticky top-0 z-20 bg-white border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="h-16 flex items-center justify-between">
-          {/* Left: Hamburger Menu */}
-          <button
-            aria-label="Open menu"
-            className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-            onClick={() => setMobileOpen(true)}
-          >
-            <HiOutlineMenu className="h-6 w-6 text-gray-700" />
-          </button>
+          {/* Left: Hamburger menu */}
+          <div className="flex items-center">
+            <button
+              aria-label="Open menu"
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+              onClick={() => setMobileOpen(true)}
+            >
+              <HiOutlineMenu className="h-6 w-6 text-gray-800" />
+            </button>
+          </div>
 
           {/* Center: Logo */}
           <div className="absolute left-1/2 transform -translate-x-1/2">
@@ -66,20 +66,24 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Right: User Info & Actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          {/* Right: User actions */}
+          <div className="flex items-center gap-2 sm:gap-3 text-gray-600">
             {/* Sliq ID Display */}
             {user?.sliqId && (
-              <span className="hidden sm:inline-block px-3 py-1.5 bg-gradient-to-r from-cyan-50 to-teal-50 border border-cyan-200 text-cyan-700 text-xs font-semibold rounded-full">
+              <span className="hidden sm:inline-block px-3 py-1.5 bg-cyan-50 text-cyan-700 text-xs font-semibold rounded-full border border-cyan-200">
                 {user.sliqId}
               </span>
             )}
-            <IoSettingsSharp className="w-5 h-5 cursor-pointer text-gray-600 hover:text-gray-900 transition-colors" />
-            <IoNotifications className="w-5 h-5 cursor-pointer text-gray-600 hover:text-gray-900 transition-colors" />
+            <button className="p-2 rounded-md hover:bg-gray-100 transition-colors">
+              <IoSettingsSharp className="h-5 w-5 text-gray-700 hover:text-gray-900" />
+            </button>
+            <button className="p-2 rounded-md hover:bg-gray-100 transition-colors">
+              <IoNotifications className="h-5 w-5 text-gray-700 hover:text-gray-900" />
+            </button>
             <button 
               onClick={logout} 
               disabled={loading} 
-              className="hidden sm:inline-block px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+              className="hidden sm:inline-block px-3 py-1.5 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
             >
               {loading ? 'Logging out...' : 'Logout'}
             </button>

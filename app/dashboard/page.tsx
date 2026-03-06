@@ -1,7 +1,8 @@
 "use client";
 import { useMemo, useState, useEffect } from "react";
 import { SendIcon, ReceiveIcon, ConvertIcon, AirtimeIcon, BillsIcon } from "@/components/icons";
-import { Bell, Eye, EyeOff, RefreshCw, ArrowUpRight, ArrowDownLeft, Copy, Check } from "lucide-react";
+import { Menu, Bell, Eye, EyeOff, RefreshCw, Home, Receipt, Repeat, Wallet, Settings, X, ArrowUpRight, ArrowDownLeft, Copy, Check } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { getTransactionsByAccount, Transaction } from "@/lib/accounts";
@@ -11,19 +12,6 @@ import { useBalances, useTransactions, useCurrentUser } from "@/lib/api-hooks";
 function DashboardSkeleton() {
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white pb-6 animate-pulse">
-            {/* Skeleton Header */}
-            <header className="px-4 py-4 flex items-center justify-between sticky top-0 z-10 bg-gradient-to-b from-gray-50 to-white">
-                <div className="space-y-1.5">
-                    <div className="w-7 h-0.5 bg-gray-300 rounded-full"></div>
-                    <div className="w-7 h-0.5 bg-gray-300 rounded-full"></div>
-                    <div className="w-7 h-0.5 bg-gray-300 rounded-full"></div>
-                </div>
-                <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-teal-200/40 via-cyan-200/30 to-teal-300/40 flex items-center justify-center">
-                    <div className="absolute inset-0.5 bg-gradient-to-b from-gray-50 to-white rounded-full"></div>
-                    <div className="w-5 h-5 bg-gray-300 rounded relative z-10"></div>
-                </div>
-            </header>
-
             <div className="px-4 space-y-5 mt-5">
                 {/* Skeleton Balance Section */}
                 <section className="bg-gradient-to-br from-gray-100 to-gray-50 rounded-3xl p-6 shadow-md">
@@ -90,6 +78,7 @@ export default function DashboardHome() {
     const [currency, setCurrency] = useState("NGN");
     const [showBalance, setShowBalance] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [accountsOpen, setAccountsOpen] = useState(false);
     const [copiedWallet, setCopiedWallet] = useState(false);
 
@@ -195,6 +184,16 @@ export default function DashboardHome() {
         });
     };
 
+    const menuItems = [
+        { icon: Home, label: "Home", href: "/dashboard" },
+        { icon: Receipt, label: "Transactions", href: "/dashboard/transactions" },
+        { icon: Repeat, label: "Convert", href: "/dashboard/convert" },
+        { icon: Wallet, label: "Wallets", href: "/dashboard/wallets" },
+        { icon: Receipt, label: "Utilities", href: "/dashboard/utilities" },
+        { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+        { icon: SendIcon, label: "Send & Receive", href: "/dashboard/send-receive" },
+    ];
+
     // Show skeleton while loading
     if (isLoading) {
         return <DashboardSkeleton />;
@@ -202,7 +201,73 @@ export default function DashboardHome() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-teal-50/30 via-green-50/20 to-cyan-50/30 pb-20">
-            <div className="px-6 mt-4">
+            {/* Sidebar Overlay */}
+            {sidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
+            {/* Sidebar */}
+            <aside className={`fixed top-0 left-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+                sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}>
+                <div className="flex flex-col h-full">
+                    {/* Sidebar Header */}
+                    <div className="p-6 border-b border-gray-100">
+                        <div className="flex items-center justify-between mb-6">
+                            <Image 
+                                src="/Sliqpay visual black(1).png" 
+                                alt="Sliqpay" 
+                                width={120} 
+                                height={40}
+                                className="h-8 w-auto"
+                            />
+                            <button 
+                                onClick={() => setSidebarOpen(false)}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <X size={20} className="text-gray-600" />
+                            </button>
+                        </div>
+                        
+                        {/* User Profile */}
+                        <div className="flex items-center gap-3">
+                            <div className="w-14 h-14 rounded-full bg-green-700 flex items-center justify-center text-white text-xl font-bold">
+                                {user?.initials || "U"}
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-semibold text-gray-900">{user?.name || "User"}</h3>
+                                {user?.sliqId && (
+                                    <span className="inline-block mt-1 px-3 py-1 bg-cyan-100 text-cyan-700 text-xs font-semibold rounded-full">
+                                        {user.sliqId}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <nav className="flex-1 overflow-y-auto py-4">
+                        {menuItems.map((item, index) => {
+                            const Icon = item.icon;
+                            return (
+                                <button
+                                    key={index}
+                                    className="w-full flex items-center gap-4 px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors"
+                                    onClick={() => setSidebarOpen(false)}
+                                >
+                                    <Icon size={22} strokeWidth={1.5} />
+                                    <span className="font-medium">{item.label}</span>
+                                </button>
+                            );
+                        })}
+                    </nav>
+                </div>
+            </aside>
+
+            <div className="px-6 mt-6">
                 {/* Currency Selector */}
                 <div className="flex justify-center mb-8">
                     <button
