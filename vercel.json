@@ -1,15 +1,5 @@
 {
   "version": 2,
-  "installCommand": "npm install",
-  "buildCommand": "cd front-end && npm run build",
-  "devCommand": "npm run dev",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next",
-      "config": {
-        "rootDirectory": "front-end"
-      }
-    }
-  ]
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev"
 }

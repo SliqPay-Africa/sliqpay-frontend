@@ -1,49 +1,29 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Next.js build output
+.next/
 
-# dependencies
-/node_modules
-**/node_modules/
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# Static export output
+out/
 
-# testing
-/coverage
+# Node modules
+node_modules/
 
-# next.js
-/.next/
-/out/
+# Environment files
+.env*
 
-# production
-/build
-
-# misc
+# OS junk
 .DS_Store
-*.pem
 
-# debug
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Test coverage
+coverage/
 
-# vercel
+# Migration notes (if not needed in repo)
+MIGRATION_NOTES.md
+
+# Auto-commit script (development tool)
+auto_commit.py
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# project docs to ignore
-/RULES.md
-dist/
-
-# Allan's personal notes (never push)
-/allan-notes/
