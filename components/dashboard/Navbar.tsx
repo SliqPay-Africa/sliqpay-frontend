@@ -42,8 +42,6 @@ export default function Navbar() {
       }
     }
 
-  const [mobileOpen, setMobileOpen] = useState(false);
-
   return (
     <header className="sticky top-0 z-20 bg-white border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
