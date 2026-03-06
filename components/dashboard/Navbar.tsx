@@ -22,8 +22,8 @@ export default function Navbar() {
       try {
         setLoading(true);
 
-        // Use the Next.js API route (works on any port)
-        await fetch('/api/v1/auth/logout', {
+        // Call backend logout endpoint
+        await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/logout`, {
           method: 'POST',
           credentials: 'include'
         });
