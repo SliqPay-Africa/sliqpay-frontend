@@ -48,55 +48,43 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-20 bg-white border-b">
-      <div className="h-14 flex items-center justify-between px-4">
-        {/* Left: mobile hamburger + logo */}
-        <div className="flex items-center gap-2">
-          {/* Hamburger visible on small screens */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="h-16 flex items-center justify-between">
+          {/* Left: Hamburger Menu */}
           <button
             aria-label="Open menu"
-            className="md:hidden p-2 rounded-md hover:bg-gray-100"
+            className="p-2 rounded-md hover:bg-gray-100 transition-colors"
             onClick={() => setMobileOpen(true)}
           >
-            <HiOutlineMenu className="h-6 w-6" />
+            <HiOutlineMenu className="h-6 w-6 text-gray-700" />
           </button>
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <img src="/Sliqpayvisual12.png" alt="SliqPay" className="h-5" />
-          </Link>
+
+          {/* Center: Logo */}
+          <div className="absolute left-1/2 transform -translate-x-1/2">
+            <Link href="/dashboard" className="flex items-center">
+              <img src="/Sliqpayvisual12.png" alt="SliqPay" className="h-6" />
+            </Link>
+          </div>
+
+          {/* Right: User Info & Actions */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Sliq ID Display */}
+            {user?.sliqId && (
+              <span className="hidden sm:inline-block px-3 py-1.5 bg-gradient-to-r from-cyan-50 to-teal-50 border border-cyan-200 text-cyan-700 text-xs font-semibold rounded-full">
+                {user.sliqId}
+              </span>
+            )}
+            <IoSettingsSharp className="w-5 h-5 cursor-pointer text-gray-600 hover:text-gray-900 transition-colors" />
+            <IoNotifications className="w-5 h-5 cursor-pointer text-gray-600 hover:text-gray-900 transition-colors" />
+            <button 
+              onClick={logout} 
+              disabled={loading} 
+              className="hidden sm:inline-block px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Logging out...' : 'Logout'}
+            </button>
+          </div>
         </div>
-
-        {/* Center: nav, hidden on small screens */}
-        <nav className="hidden md:flex items-center gap-1">
-          <Link
-            href="/dashboard"
-            className={`px-3 py-1.5 rounded-md text-sm ${
-              dashboard ? "bg-[#00d0ff] text-white" : "hover:bg-gray-100"
-            }`}
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/dashboard/history"
-            className={`px-3 py-1.5 rounded-md text-sm ${
-              history ? "bg-[#00d0ff] text-white" : "hover:bg-gray-100"
-            }`}
-          >
-            History
-          </Link>
-        </nav>
-
-        <div className="flex items-center gap-3 text-gray-600">
-                {/* Sliq ID Display */}
-                {user?.sliqId && (
-                  <span className="hidden sm:inline-block px-3 py-1 bg-cyan-100 text-cyan-700 text-xs font-semibold rounded-full">
-                    {user.sliqId}
-                  </span>
-                )}
-                <IoSettingsSharp className="cursor-pointer hover:text-gray-800 transition-colors" />
-                <IoNotifications className="cursor-pointer hover:text-gray-800 transition-colors" />
-                <button onClick={logout} disabled={loading} className="text-sm text-red-600 hover:underline disabled:opacity-50">{loading ? '...' : 'Logout'}</button>
-        </div>
-
-        
       </div>
 
       {/* Mobile off-canvas sidebar */}
