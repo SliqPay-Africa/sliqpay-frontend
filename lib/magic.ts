@@ -47,8 +47,8 @@ const defaultChain = chains.moonbase;
 
 // Initialize Magic instance (client-side only)
 export const magic =
-  typeof window !== 'undefined'
-    ? new Magic(process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY!, {
+  typeof window !== 'undefined' && process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY
+    ? new Magic(process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY, {
         network: {
           rpcUrl: defaultChain.rpcUrl,
           chainId: defaultChain.chainId,
@@ -131,10 +131,10 @@ export const getChainConfig = (chainKey: ChainKey) => {
 
 // Switch network (requires re-initialization of Magic instance)
 export const switchNetwork = (chainKey: ChainKey): Magic | null => {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined' || !process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY) return null;
 
   const chain = chains[chainKey];
-  return new Magic(process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY!, {
+  return new Magic(process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY, {
     network: {
       rpcUrl: chain.rpcUrl,
       chainId: chain.chainId,
