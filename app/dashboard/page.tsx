@@ -326,6 +326,11 @@ export default function DashboardHome() {
                     )}
 
                     <div className="flex justify-center mb-8">
+                        {user?.sliqId && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                                SliqID: {user.sliqId}
+                            </span>
+                        )}
                         <button
                             onClick={copyWalletAddress}
                             disabled={!user?.walletAddress}
@@ -501,22 +506,22 @@ export default function DashboardHome() {
                             {transactions.map((t) => (
                                 <div key={t.id} className="flex items-center gap-3 py-3">
                                     <div className={`h-11 w-11 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                        t.type === 'receive' ? 'bg-green-50' : 'bg-cyan-50'
+                                        t.type === 'credit' ? 'bg-green-50' : 'bg-cyan-50'
                                     }`}>
-                                        {t.type === 'receive' ? (
+                                        {t.type === 'credit' ? (
                                             <ReceiveIcon size={20} className="text-green-600" strokeWidth={2.5} />
                                         ) : (
                                             <SendIcon size={20} className="text-cyan-600" strokeWidth={2.5} />
                                         )}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900 truncate">{t.title}</p>
-                                        <p className="text-xs text-gray-500 mt-0.5">{t.time}</p>
+                                        <p className="text-sm font-medium text-gray-900 truncate">{t.description}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5">{t.created_at}</p>
                                     </div>
                                     <div className="text-right flex-shrink-0">
                                         <p className="text-sm font-semibold text-gray-900">{t.amount}</p>
                                         <span className="inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-green-100 text-green-700">
-                                            {t.status}
+                                            completed
                                         </span>
                                     </div>
                                 </div>
