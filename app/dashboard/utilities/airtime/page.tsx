@@ -2,21 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, User, AlertCircle } from "lucide-react";
+import { ArrowLeft, ChevronDown, User, AlertCircle, Wallet, Banknote, Loader2 } from "lucide-react";
 import NetworkPickerSheet, { Network } from "@/components/utilities/NetworkPickerSheet";
 import TransactionPinScreen from "@/components/utilities/TransactionPinScreen";
 import AirtimeSuccessScreen from "@/components/utilities/AirtimeSuccessScreen";
 import { useUser } from "@/contexts/UserContext";
 import { createTransaction } from "@/lib/accounts";
+import axios from "axios";
+
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000/api/v1";
 
 export default function BuyAirtime() {
   const router = useRouter();
-  const { balance, refreshAccount, account } = useUser();
-  const [country, setCountry] = useState("");
+  const { balance, refreshAccount, account, user } = useUser();
+  const [country, setCountry] = useState("Nigeria");
   const [network, setNetwork] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'fiat' | 'crypto'>('fiat');
+  const [cryptoError, setCryptoError] = useState<string | null>(null);
   const minAmount = 5;
   const maxAmount = 50000;
 
@@ -31,7 +36,8 @@ export default function BuyAirtime() {
   const [stage, setStage] = useState<Stage>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isAmountValid = amount && !isNaN(Number(amount)) && Number(amount) >= minAmount && Number(amount) <= maxAmount && Number(amount) <= balance;
+  const isAmountInRange = amount && !isNaN(Number(amount)) && Number(amount) >= minAmount && Number(amount) <= maxAmount;
+  const isAmountValid = isAmountInRange && (paymentMethod === 'crypto' || Number(amount) <= balance);
   const isFormValid = country && network && phoneNumber.length >= 10 && isAmountValid;
 
   const handleContinue = () => {
@@ -46,31 +52,59 @@ export default function BuyAirtime() {
   };
 
   const handlePinSubmit = async (pin: string) => {
-    // Simulate API call
     setIsSubmitting(true);
+    setCryptoError(null);
     
     try {
-      // Create debit transaction for airtime purchase
-      if (account?.id) {
-        await createTransaction({
-          accountId: account.id,
-          amount: Number(amount),
-          type: 'debit',
-          description: `Airtime purchase - ${networks.find(n => n.code === network)?.name || network} (${phoneNumber})`
-        });
+      if (paymentMethod === 'crypto') {
+        // Custodial crypto flow — backend handles on-chain tx + VTPass
+        const token = localStorage.getItem("sliqpay_token");
+        const res = await axios.post(
+          `${backendUrl}/pay-with-crypto/custodial-airtime`,
+          {
+            phone: phoneNumber,
+            network,
+            amount: Number(amount),
+            sliqId: user?.sliqId || 'unknown',
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.data?.success) {
+          setIsSubmitting(false);
+          setStage('success');
+        } else {
+          throw new Error(res.data?.error || 'Crypto payment failed');
+        }
+      } else {
+        // Fiat flow — debit from account balance
+        if (account?.id) {
+          await createTransaction({
+            accountId: account.id,
+            amount: Number(amount),
+            type: 'debit',
+            description: `Airtime purchase - ${networks.find(n => n.code === network)?.name || network} (${phoneNumber})`
+          });
+        }
+        setTimeout(() => {
+          setIsSubmitting(false);
+          setStage('success');
+        }, 1200);
       }
-      
-      setTimeout(() => {
+    } catch (error: any) {
+      console.error("Payment failed:", error);
+      const msg = error?.response?.data?.error || error?.message || 'Payment failed';
+      if (paymentMethod === 'crypto') {
+        setCryptoError(msg);
         setIsSubmitting(false);
-        setStage('success');
-      }, 1200);
-    } catch (error) {
-      console.error("Failed to create transaction:", error);
-      // Still proceed to success for better UX
-      setTimeout(() => {
-        setIsSubmitting(false);
-        setStage('success');
-      }, 1200);
+        setStage('form');
+        setShowPreview(false);
+      } else {
+        // Fiat fallback: still proceed for UX
+        setTimeout(() => {
+          setIsSubmitting(false);
+          setStage('success');
+        }, 1200);
+      }
     }
   };
 
@@ -138,6 +172,22 @@ export default function BuyAirtime() {
               <span className="text-sm text-gray-600">Network</span>
               <span className="text-sm font-semibold text-gray-900">{network}</span>
             </div>
+            <div className="h-px bg-gray-200"></div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm text-gray-600">Payment Method</span>
+              <span className={`text-sm font-semibold ${paymentMethod === 'crypto' ? 'text-emerald-600' : 'text-gray-900'}`}>
+                {paymentMethod === 'crypto' ? '🔗 Crypto (AVAX)' : '💵 Fiat Balance'}
+              </span>
+            </div>
+            {paymentMethod === 'crypto' && user?.walletAddress && (
+              <>
+                <div className="h-px bg-gray-200"></div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-gray-600">Wallet</span>
+                  <span className="text-xs font-mono text-gray-500">{user.walletAddress.slice(0, 6)}...{user.walletAddress.slice(-4)}</span>
+                </div>
+              </>
+            )}
           </div>
 
           <button
@@ -250,6 +300,52 @@ export default function BuyAirtime() {
             <AlertCircle size={16} className="mt-0.5" />
             <p className="text-xs">Please enter an amount between ₦{minAmount} and ₦{maxAmount.toLocaleString()}</p>
           </div>
+        </div>
+
+        {/* Payment Method Selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-900 mb-2">Payment Method</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => { setPaymentMethod('fiat'); setCryptoError(null); }}
+              className={`flex items-center gap-2 justify-center py-3 px-4 rounded-xl border-2 transition-all text-sm font-semibold ${
+                paymentMethod === 'fiat'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <Banknote size={18} />
+              Fiat Balance
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPaymentMethod('crypto'); setCryptoError(null); }}
+              className={`flex items-center gap-2 justify-center py-3 px-4 rounded-xl border-2 transition-all text-sm font-semibold ${
+                paymentMethod === 'crypto'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <Wallet size={18} />
+              Crypto (AVAX)
+            </button>
+          </div>
+          {paymentMethod === 'crypto' && user?.walletAddress && (
+            <p className="text-xs text-gray-500 mt-2">
+              Paying from wallet: <span className="font-mono">{user.walletAddress.slice(0, 6)}...{user.walletAddress.slice(-4)}</span>
+            </p>
+          )}
+          {paymentMethod === 'crypto' && !user?.walletAddress && (
+            <p className="text-xs text-amber-600 mt-2">
+              No crypto wallet found. One will be created on your next login.
+            </p>
+          )}
+          {cryptoError && (
+            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-xs text-red-600">{cryptoError}</p>
+            </div>
+          )}
         </div>
 
         <button

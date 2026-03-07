@@ -1,11 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { magic, getWalletAddress, getUserMetadata, magicLogout, isAuthenticated } from '@/lib/magic';
+import { getMagic, getWalletAddress, getUserMetadata, magicLogout, isAuthenticated } from '@/lib/magic';
 import type { MagicUserMetadata } from 'magic-sdk';
+import type { Magic as MagicType } from 'magic-sdk';
 
 interface MagicContextType {
-  magic: typeof magic;
+  magic: MagicType | null;
   user: MagicUserMetadata | null;
   walletAddress: string | null;
   isLoading: boolean;
@@ -19,15 +20,27 @@ interface MagicContextType {
 const MagicContext = createContext<MagicContextType>({} as MagicContextType);
 
 export function MagicProvider({ children }: { children: ReactNode }) {
+  const [magic, setMagic] = useState<MagicType | null>(null);
   const [user, setUser] = useState<MagicUserMetadata | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Check authentication status on mount
+  // Initialize Magic on mount
   useEffect(() => {
-    checkAuth();
+    const initMagic = async () => {
+      const magicInstance = await getMagic();
+      setMagic(magicInstance);
+    };
+    initMagic();
   }, []);
+
+  // Check authentication status when magic is initialized
+  useEffect(() => {
+    if (magic) {
+      checkAuth();
+    }
+  }, [magic]);
 
   const checkAuth = async () => {
     setIsLoading(true);

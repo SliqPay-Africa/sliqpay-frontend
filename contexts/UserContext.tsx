@@ -102,6 +102,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setAccount(null);
     setBalance(0);
     localStorage.removeItem("sliqpay_user");
+    // Clear the frontend auth indicator cookie
+    if (typeof document !== 'undefined') {
+      document.cookie = 'sliqpay_logged_in=; path=/; max-age=0';
+    }
   };
 
   const value: UserContextType = {
