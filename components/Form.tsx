@@ -16,6 +16,7 @@ type FormInfos = {
   password: string;
   cPassword: string;
   refCode: string;
+  sliqId: string;
 };
 
 export type FormType = "signup" | "login" | "forgot";
@@ -39,7 +40,7 @@ export default function Form({ formtype }: FormProp) {
     }, [formtype]);
 
     const showField = (field: string) => {
-        if (formtype === "signup") return ["fname","lname","email","phone","password","cPassword","refCode"].includes(field);
+        if (formtype === "signup") return ["fname","lname","email","phone","sliqId","password","cPassword","refCode"].includes(field);
         if (formtype === "login") return field === "email" || field === "password";
         if (formtype === "forgot") return field === "email";
         return false;
@@ -83,6 +84,7 @@ export default function Form({ formtype }: FormProp) {
         password: "",
         cPassword: "",
         refCode: "",
+        sliqId: "",
     });
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -111,7 +113,7 @@ export default function Form({ formtype }: FormProp) {
                 return;
               }
               const v = parsed.data;
-              payload = { fname: v.fname, lname: v.lname, email: v.email, password: v.password, phone: v.phone || undefined, refCode: formInfos.refCode?.trim() || undefined };
+              payload = { fname: v.fname, lname: v.lname, email: v.email, password: v.password, phone: v.phone || undefined, sliqId: formInfos.sliqId?.trim() || undefined, refCode: formInfos.refCode?.trim() || undefined };
             } else if (formtype === "login") {
               const parsed = loginSchema.safeParse({ email: formInfos.email, password: formInfos.password });
               if (!parsed.success) {
@@ -150,7 +152,7 @@ export default function Form({ formtype }: FormProp) {
             }
             
             // For signup and login, show success and redirect
-            setFormInfos({ fname: "", lname: "", email: "", phone: "", password: "", cPassword: "", refCode: "" });
+            setFormInfos({ fname: "", lname: "", email: "", phone: "", password: "", cPassword: "", refCode: "", sliqId: "" });
 
             // Store user data if returned - use correct storage format
             if (response?.user) {
@@ -164,15 +166,17 @@ export default function Form({ formtype }: FormProp) {
                 walletType: response.user.walletType || undefined,
               };
               localStorage.setItem('sliqpay_user', JSON.stringify(userData));
+              // Set a frontend-domain cookie so Next.js middleware can detect the session
+              document.cookie = `sliqpay_logged_in=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
               // Immediately update UserContext so it's available on next page
               setUser(userData);
             }
 
             // Different redirect paths for signup vs login
             if (formtype === 'signup') {
-              setSuccessMsg('Account created! Redirecting to wallet creation...');
+              setSuccessMsg('Account created! Setting up your wallet...');
               setTimeout(() => {
-                router.push('/auth/signup/connect-wallet');
+                router.push('/dashboard');
               }, 1000);
             } else {
               setSuccessMsg('Login successful! Redirecting to dashboard...');
@@ -264,7 +268,7 @@ export default function Form({ formtype }: FormProp) {
                 <label className="block text-gray-700 text-sm mb-2">Email</label>
                 <input
                 type="email"
-                className={`w-full rounded-xl px-4 py-3 outline-none transition border ${formtype==='login' ? 'bg-gray-100 border-gray-200 focus:border-gray-300' : 'border-gray-300 focus:border-gray-400'}`}
+                className={`w-full rounded-xl px-4 py-3 outline-none transition border text-gray-900 ${formtype==='login' ? 'bg-gray-100 border-gray-200 focus:border-gray-300' : 'border-gray-300 focus:border-gray-400'}`}
                 placeholder={formtype==='login' ? 'Olabunmi@sampleemail.com' : 'john@example.com'}
                 value={formInfos.email}
                 onChange={(e) =>
@@ -291,13 +295,35 @@ export default function Form({ formtype }: FormProp) {
             </div>
             )}
 
+            {showField("sliqId") && (
+            <div className="mb-4">
+                <label className="block text-gray-700 text-sm mb-2">Sliq ID / Username <span className="text-gray-400 font-normal">(Optional)</span></label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    className="w-full border rounded px-3 py-3 pl-8"
+                    placeholder="e.g. swift_trader"
+                    value={formInfos.sliqId}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^a-zA-Z0-9_-]/g, '');
+                      setFormInfos({ ...formInfos, sliqId: cleaned.toLowerCase() });
+                    }}
+                    maxLength={30}
+                  />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">@</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Leave blank to auto-generate. Letters, numbers, - and _ only.</p>
+                {fieldErrors.sliqId && <p className="text-xs text-red-600 mt-1">{fieldErrors.sliqId}</p>}
+            </div>
+            )}
+
                         {showField("password") && (
                         <div className="mb-4">
                                 <label className="block text-gray-700 text-sm mb-2">Password</label>
                                 <div className="relative">
                                     <input
                                         type={showPassword ? 'text' : 'password'}
-                                        className={`w-full rounded-xl px-4 py-3 pr-10 outline-none transition border ${formtype==='login' ? 'bg-gray-100 border-gray-200 focus:border-gray-300' : 'border-gray-300 focus:border-gray-400'}`}
+                                        className={`w-full rounded-xl px-4 py-3 pr-10 outline-none transition border text-gray-900 ${formtype==='login' ? 'bg-gray-100 border-gray-200 focus:border-gray-300' : 'border-gray-300 focus:border-gray-400'}`}
                                         placeholder={formtype==='login' ? '****************' : '••••••••'}
                                         value={formInfos.password}
                                         onChange={(e) =>

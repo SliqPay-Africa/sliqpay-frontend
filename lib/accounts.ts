@@ -18,8 +18,10 @@ export type Transaction = {
   created_at: string;
 };
 
-export async function getAccountsByUser(userId: string): Promise<{ accounts: Account[] }> {
-  return api(`/account/user/${userId}`);
+export async function getAccountsByUser(_userId?: string): Promise<{ accounts: Account[] }> {
+  // Use the auth-guarded /account/me endpoint instead of /account/user/:id (which doesn't exist)
+  const data = await api<{ account: Account }>(`/account/me`);
+  return { accounts: data.account ? [data.account] : [] };
 }
 
 export async function getAccountById(id: string): Promise<{ account: Account }>{

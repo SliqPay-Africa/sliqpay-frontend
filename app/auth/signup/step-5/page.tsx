@@ -39,7 +39,8 @@ export default function Step5() {
       const uniquePhone = `+234${Date.now().toString().slice(-10)}`;
       
       // Extract clean sliqId from user context (remove @ and .sliq.eth)
-      const cleanSliqId = user?.sliqId?.replace('@', '').replace('.sliq.eth', '') || '';
+      const rawSliqId = user?.sliqId?.replace('@', '').replace('.sliq.eth', '') || '';
+      const cleanSliqId = rawSliqId.length >= 3 ? rawSliqId : undefined; // Only send if valid, otherwise let backend auto-generate
       
       const signupData = {
         fname: user?.name?.split(' ')[0] || 'User',
@@ -47,7 +48,7 @@ export default function Step5() {
         email: user?.email || '',
         password: pw,
         phone: uniquePhone,
-        sliqId: cleanSliqId, // Pass the user's chosen SliqID
+        sliqId: cleanSliqId, // Pass the user's chosen SliqID, or undefined for auto-generation
         refCode: undefined
       };
 
@@ -71,17 +72,28 @@ export default function Step5() {
       const data = await response.json();
       console.log('Signup successful:', data);
 
-      // Update user context with server response
+      // Update user context with server response (including embedded wallet)
       if (data.user) {
-        updateUser({
+        // Store auth token
+        if (data.token) {
+          localStorage.setItem('sliqpay_token', data.token);
+        }
+        const userData = {
           name: `${data.user.firstName} ${data.user.lastName}`,
           email: data.user.email,
-          sliqId: data.user.sliqId // Update with the actual SliqID from backend
-        });
+          sliqId: data.user.sliqId,
+          userId: data.user.id,
+          initials: `${data.user.firstName?.[0] || ''}${data.user.lastName?.[0] || ''}`.toUpperCase(),
+          walletAddress: data.user.walletAddress || undefined,
+          walletType: data.user.walletType || undefined,
+        };
+        updateUser(userData);
+        // Set frontend auth cookie so middleware detects the session
+        document.cookie = `sliqpay_logged_in=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
       }
 
-      // Navigate to connect wallet
-      router.push("/auth/signup/connect-wallet");
+      // Wallet is auto-created on the backend — go straight to dashboard
+      router.push("/dashboard");
     } catch (err: any) {
       console.error("Signup error:", err);
       setError(err.message || "Failed to create account. Please try again.");

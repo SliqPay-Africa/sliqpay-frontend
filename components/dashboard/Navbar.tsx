@@ -20,19 +20,23 @@ export default function Navbar() {
       try {
         setLoading(true);
 
-        // Use the Next.js API route (works on any port)
-        await fetch('/api/v1/auth/logout', {
+        // Call backend logout API
+        const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000/api/v1';
+        await fetch(`${API_BASE}/auth/logout`, {
           method: 'POST',
           credentials: 'include'
         });
 
         // Clear user context data
         clearUser();
+        // Clear the frontend auth cookie so middleware redirects to login
+        document.cookie = 'sliqpay_logged_in=; path=/; max-age=0';
        
       } catch (e) {
         console.error('Logout error:', e);
         // Clear user data even if API call fails
         clearUser();
+        document.cookie = 'sliqpay_logged_in=; path=/; max-age=0';
       } finally {
         setLoading(false);
         // Use a small delay before redirecting to ensure the cookie is cleared

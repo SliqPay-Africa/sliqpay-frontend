@@ -17,7 +17,13 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
   
   if (!res.ok) {
     let msg = 'Request failed';
-    try { const data = await res.json(); msg = data.error || data.message || msg; } catch {}
+    try {
+      const data = await res.json();
+      msg =
+        (typeof data.error === 'string' ? data.error : data.error?.message) ||
+        data.message ||
+        msg;
+    } catch {}
     throw new Error(msg);
   }
   try { return await res.json(); } catch { return undefined as any; }

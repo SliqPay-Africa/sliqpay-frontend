@@ -12,16 +12,16 @@ export default function Step1() {
   const [email, setEmail] = useState("");
   const [sliqId, setSliqId] = useState("");
 
-  // Validation: email must be valid and sliqId must have at least 3 characters
+  // Validation: email must be valid; sliqId is optional but if entered must have at least 3 characters
   const isValidEmail = email.includes("@") && email.includes(".");
-  const isValidSliqId = sliqId.length >= 3;
+  const isValidSliqId = sliqId.length === 0 || sliqId.length >= 3;
   const isFormValid = isValidEmail && isValidSliqId;
 
   const handleContinue = () => {
     if (!isFormValid) return;
     
     // Save user data to context (will be persisted to localStorage)
-    const fullSliqId = `@${sliqId}.sliq.eth`;
+    const fullSliqId = sliqId ? `@${sliqId}.sliq.eth` : '';
     setUser({
       sliqId: fullSliqId,
       email,
@@ -66,7 +66,7 @@ export default function Step1() {
           </div>
           <div>
             <label className="block text-sm text-gray-700 mb-2">
-              Create Sliq ID <span className="text-red-500">*</span>
+              Create Sliq ID <span className="text-gray-400 font-normal">(Optional)</span>
             </label>
             <div className="relative">
               <input 
@@ -79,28 +79,27 @@ export default function Step1() {
                 type="text" 
                 placeholder="username" 
                 className="w-full rounded-xl bg-gray-100 border border-gray-200 pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-cyan-500" 
-                required
                 minLength={3}
+                maxLength={30}
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">@</span>
               {sliqId && isValidSliqId && (
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600">✔</span>
               )}
             </div>
-            {sliqId && (
-              <p className={`mt-1.5 text-xs ${isValidSliqId ? 'text-gray-600' : 'text-red-500'}`}>
-                {isValidSliqId ? (
-                  <>
-                    Your Sliq ID: <span className="font-semibold text-cyan-700">@{sliqId}.sliq.eth</span>
-                  </>
-                ) : (
-                  'Sliq ID must be at least 3 characters'
-                )}
+            {sliqId && !isValidSliqId && (
+              <p className="mt-1.5 text-xs text-red-500">
+                Sliq ID must be at least 3 characters
+              </p>
+            )}
+            {sliqId && isValidSliqId && (
+              <p className="mt-1.5 text-xs text-gray-600">
+                Your Sliq ID: <span className="font-semibold text-cyan-700">@{sliqId}.sliq.eth</span>
               </p>
             )}
             {!sliqId && (
               <p className="mt-1.5 text-xs text-gray-500">
-                Min. 3 characters (letters, numbers, - and _ only)
+                Leave blank to auto-generate. Letters, numbers, - and _ only.
               </p>
             )}
           </div>
