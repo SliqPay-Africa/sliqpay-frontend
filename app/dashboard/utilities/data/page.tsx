@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronDown, User, AlertCircle } from "lucide-react";
 import NetworkPickerSheet, { Network } from "@/components/utilities/NetworkPickerSheet";
@@ -8,6 +8,9 @@ import TransactionPinScreen from "@/components/utilities/TransactionPinScreen";
 import AirtimeSuccessScreen from "@/components/utilities/AirtimeSuccessScreen";
 import { useUser } from "@/contexts/UserContext";
 import { createTransaction } from "@/lib/accounts";
+import axios from "axios";
+
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000/api/v1";
 
 export default function BuyData() {
   const router = useRouter();
@@ -20,8 +23,27 @@ export default function BuyData() {
   type Stage = 'form' | 'pin' | 'success';
   const [stage, setStage] = useState<Stage>('form');
   const [networkSheetOpen, setNetworkSheetOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [hasPin, setHasPin] = useState<boolean | null>(null);
   const minAmount = 5;
   const maxAmount = 50000;
+
+  // Check if user has a transaction PIN set
+  useEffect(() => {
+    const checkPin = async () => {
+      try {
+        const token = localStorage.getItem("sliqpay_token");
+        const res = await axios.get(`${backendUrl}/user/pin/status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setHasPin(res.data?.hasPin ?? false);
+      } catch {
+        setHasPin(false);
+      }
+    };
+    checkPin();
+  }, []);
 
   const networks: Network[] = [
     { code: "MTN", name: "MTN", logo: "/product-logos/mtn.jpg" },
@@ -43,8 +65,29 @@ export default function BuyData() {
     setShowPreview(false);
   };
 
-  const handlePinSubmit = async (_pin: string) => {
+  const handlePinSubmit = async (pin: string) => {
+    setIsSubmitting(true);
+    setPinError(null);
     try {
+      const token = localStorage.getItem("sliqpay_token");
+      
+      // Set or verify PIN
+      if (!hasPin) {
+        const setPinRes = await axios.post(
+          `${backendUrl}/user/pin/set`,
+          { pin },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (setPinRes.data?.ok) setHasPin(true);
+      } else {
+        const verifyRes = await axios.post(
+          `${backendUrl}/user/pin/verify`,
+          { pin },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!verifyRes.data?.ok) throw new Error('Incorrect PIN');
+      }
+
       // Create debit transaction for data purchase
       if (account?.id) {
         await createTransaction({
@@ -55,16 +98,29 @@ export default function BuyData() {
         });
       }
       
-      setTimeout(() => setStage('success'), 1000);
-    } catch (error) {
-      console.error("Failed to create transaction:", error);
-      // Still proceed to success
-      setTimeout(() => setStage('success'), 1000);
+      setTimeout(() => { setIsSubmitting(false); setStage('success'); }, 1000);
+    } catch (error: any) {
+      console.error("Failed:", error);
+      const msg = error?.response?.data?.error || error?.message || 'Failed';
+      if (msg.includes('PIN')) {
+        setPinError(msg);
+        setIsSubmitting(false);
+        return;
+      }
+      setTimeout(() => { setIsSubmitting(false); setStage('success'); }, 1000);
     }
   };
 
   if (stage === 'pin') {
-    return <TransactionPinScreen onBack={() => setStage('form')} onSubmit={handlePinSubmit} />;
+    return (
+      <TransactionPinScreen
+        onBack={() => { setStage('form'); setPinError(null); }}
+        onSubmit={handlePinSubmit}
+        mode={hasPin ? "enter" : "create"}
+        error={pinError}
+        isLoading={isSubmitting}
+      />
+    );
   }
 
   if (stage === 'success') {

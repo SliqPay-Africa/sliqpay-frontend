@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronDown, X, Check } from "lucide-react";
 import TransactionPinScreen from "@/components/utilities/TransactionPinScreen";
 import AirtimeSuccessScreen from "@/components/utilities/AirtimeSuccessScreen";
 import { useUser } from "@/contexts/UserContext";
 import { createTransaction } from "@/lib/accounts";
+import axios from "axios";
+
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000/api/v1";
 
 type BillCategory = "Electricity" | "Cable TV" | "";
 
@@ -36,6 +39,25 @@ export default function PayBills() {
   const [showPreview, setShowPreview] = useState(false);
   type Stage = 'form' | 'pin' | 'success';
   const [stage, setStage] = useState<Stage>('form');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [hasPin, setHasPin] = useState<boolean | null>(null);
+
+  // Check if user has a transaction PIN set
+  useEffect(() => {
+    const checkPin = async () => {
+      try {
+        const token = localStorage.getItem("sliqpay_token");
+        const res = await axios.get(`${backendUrl}/user/pin/status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setHasPin(res.data?.hasPin ?? false);
+      } catch {
+        setHasPin(false);
+      }
+    };
+    checkPin();
+  }, []);
 
   const electricityBillers: Biller[] = [
     { id: "abuja", name: "Nigeria Abuja Elec. Prepaid", logo: "AEDC" },
@@ -114,8 +136,29 @@ export default function PayBills() {
     setShowPreview(false);
   };
 
-  const handlePinSubmit = async (_pin: string) => {
+  const handlePinSubmit = async (pin: string) => {
+    setIsSubmitting(true);
+    setPinError(null);
     try {
+      const token = localStorage.getItem("sliqpay_token");
+      
+      // Set or verify PIN
+      if (!hasPin) {
+        const setPinRes = await axios.post(
+          `${backendUrl}/user/pin/set`,
+          { pin },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (setPinRes.data?.ok) setHasPin(true);
+      } else {
+        const verifyRes = await axios.post(
+          `${backendUrl}/user/pin/verify`,
+          { pin },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!verifyRes.data?.ok) throw new Error('Incorrect PIN');
+      }
+
       // Create debit transaction for bill payment
       const amount = category === "Electricity" ? Number(electricityAmount) : (selectedPkg?.price || 0);
       const description = category === "Electricity" 
@@ -131,16 +174,29 @@ export default function PayBills() {
         });
       }
       
-      setTimeout(() => setStage('success'), 1000);
-    } catch (error) {
-      console.error("Failed to create transaction:", error);
-      // Still proceed to success
-      setTimeout(() => setStage('success'), 1000);
+      setTimeout(() => { setIsSubmitting(false); setStage('success'); }, 1000);
+    } catch (error: any) {
+      console.error("Failed:", error);
+      const msg = error?.response?.data?.error || error?.message || 'Failed';
+      if (msg.includes('PIN')) {
+        setPinError(msg);
+        setIsSubmitting(false);
+        return;
+      }
+      setTimeout(() => { setIsSubmitting(false); setStage('success'); }, 1000);
     }
   };
 
   if (stage === 'pin') {
-    return <TransactionPinScreen onBack={() => { setStage('form'); setShowPreview(false); }} onSubmit={handlePinSubmit} />;
+    return (
+      <TransactionPinScreen
+        onBack={() => { setStage('form'); setShowPreview(false); setPinError(null); }}
+        onSubmit={handlePinSubmit}
+        mode={hasPin ? "enter" : "create"}
+        error={pinError}
+        isLoading={isSubmitting}
+      />
+    );
   }
 
   if (stage === 'success') {

@@ -7,9 +7,21 @@ export async function api<T = any>(path: string, init: RequestInit = {}): Promis
   const fullUrl = `${API_BASE}${path}`;
   console.log('📡 API Request:', init.method || 'GET', fullUrl); // Debug log
   
+  // Build headers — always include Bearer token if available (cross-origin cookie fallback)
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init.headers as Record<string, string> || {}),
+  };
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('sliqpay_token');
+    if (token && !headers['Authorization']) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
   const res = await fetch(fullUrl, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
+    headers,
     ...init
   });
   

@@ -6,15 +6,27 @@ import React, { useEffect, useMemo, useState } from "react";
 type Props = {
   onBack: () => void;
   onSubmit: (pin: string) => void;
+  /** "create" = user is setting PIN for the first time, "enter" = user is entering existing PIN */
+  mode?: "create" | "enter";
+  /** Error message from parent (e.g. "Incorrect PIN") */
+  error?: string | null;
+  isLoading?: boolean;
 };
 
-export default function TransactionPinScreen({ onBack, onSubmit }: Props) {
+export default function TransactionPinScreen({ onBack, onSubmit, mode = "enter", error, isLoading }: Props) {
   const [digits, setDigits] = useState<string[]>(["", "", "", ""]);
+  const [confirmDigits, setConfirmDigits] = useState<string[]>(["", "", "", ""]);
+  const [step, setStep] = useState<"pin" | "confirm">("pin");
+  const [mismatchError, setMismatchError] = useState("");
 
-  const canSubmit = useMemo(() => digits.every((d) => d !== ""), [digits]);
+  const activeDigits = step === "pin" ? digits : confirmDigits;
+  const setActiveDigits = step === "pin" ? setDigits : setConfirmDigits;
+
+  const canSubmit = useMemo(() => activeDigits.every((d) => d !== ""), [activeDigits]);
 
   const push = (d: string) => {
-    setDigits((prev) => {
+    setMismatchError("");
+    setActiveDigits((prev) => {
       const next = [...prev];
       const idx = next.findIndex((x) => x === "");
       if (idx !== -1) next[idx] = d;
@@ -23,17 +35,38 @@ export default function TransactionPinScreen({ onBack, onSubmit }: Props) {
   };
 
   const pop = () => {
-    setDigits((prev) => {
+    setActiveDigits((prev) => {
       const next = [...prev];
       const idx = [...next].reverse().findIndex((x) => x !== "");
-      if (idx !== -1) next[3 - idx] = ""; // map reversed index back
+      if (idx !== -1) next[3 - idx] = "";
       return next;
     });
   };
 
   const handleSubmit = () => {
-    if (!canSubmit) return;
-    onSubmit(digits.join(""));
+    if (!canSubmit || isLoading) return;
+    
+    if (mode === "create" && step === "pin") {
+      // Move to confirmation step
+      setStep("confirm");
+      return;
+    }
+    
+    if (mode === "create" && step === "confirm") {
+      // Check that PINs match
+      const pin = digits.join("");
+      const confirm = confirmDigits.join("");
+      if (pin !== confirm) {
+        setMismatchError("PINs don't match. Try again.");
+        setConfirmDigits(["", "", "", ""]);
+        return;
+      }
+      onSubmit(pin);
+      return;
+    }
+    
+    // Enter mode — just submit
+    onSubmit(activeDigits.join(""));
   };
 
   const keypad = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "←"];
@@ -41,7 +74,6 @@ export default function TransactionPinScreen({ onBack, onSubmit }: Props) {
 
   useEffect(() => {
     if (canSubmit) {
-      // Trigger completion animation once all digits are filled
       const t = setTimeout(() => setAnimateComplete(true), 120);
       return () => clearTimeout(t);
     } else {
@@ -49,20 +81,29 @@ export default function TransactionPinScreen({ onBack, onSubmit }: Props) {
     }
   }, [canSubmit]);
 
+  const title = mode === "create"
+    ? (step === "pin" ? "Create Transaction PIN" : "Confirm Your PIN")
+    : "Input Transaction PIN";
+  
+  const subtitle = mode === "create"
+    ? (step === "pin" ? "Set a 4-digit PIN to secure your transactions" : "Re-enter your 4-digit PIN to confirm")
+    : "Enter your 4-digit Transaction PIN to complete Purchase";
+
+  const displayError = mismatchError || error;
+
   return (
     <div className="min-h-screen bg-white pb-6">
       {/* Header */}
       <div className="px-4 pt-4">
-        <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full" aria-label="Go back">
+        <button onClick={step === "confirm" ? () => { setStep("pin"); setConfirmDigits(["","","",""]); } : onBack} className="p-2 hover:bg-gray-100 rounded-full" aria-label="Go back">
           <ArrowLeft size={22} className="text-gray-900" />
         </button>
       </div>
 
       <div className="px-4 mt-8 max-w-md mx-auto text-center">
-        {/* Icon from reference: refined sizing + animated dots/lock */}
+        {/* Icon */}
         <div className="mx-auto mb-5 h-20 w-32 grid place-items-center">
           <div className="relative">
-            {/* Speech bubble */}
             <svg width="120" height="68" viewBox="0 0 120 68" fill="none" className="drop-shadow-sm">
               <rect x="12" y="6" width="96" height="44" rx="12" fill="#C5FAD8" />
               {[32, 54, 76].map((cx, i) => (
@@ -76,7 +117,6 @@ export default function TransactionPinScreen({ onBack, onSubmit }: Props) {
                 />
               ))}
             </svg>
-            {/* Lock */}
             <div className={`absolute right-0 bottom-0 translate-y-12 lock-wrapper ${animateComplete ? 'lock-complete' : ''}`}>
               <svg width="70" height="70" viewBox="0 0 70 70" fill="none">
                 <rect x="14" y="30" width="42" height="30" rx="8" fill="#008A3A" />
@@ -87,14 +127,18 @@ export default function TransactionPinScreen({ onBack, onSubmit }: Props) {
           </div>
         </div>
 
-  <h2 className="text-lg font-extrabold text-gray-900 mt-2">Input Transaction PIN</h2>
-  <p className="mt-1 text-sm text-gray-600">Enter your 4 - digit Transaction PIN to complete Purchase</p>
+        <h2 className="text-lg font-extrabold text-gray-900 mt-2">{title}</h2>
+        <p className="mt-1 text-sm text-gray-600">{subtitle}</p>
+
+        {displayError && (
+          <p className="mt-2 text-sm text-red-500 font-medium">{displayError}</p>
+        )}
 
         {/* PIN boxes */}
         <div className="mt-6 flex items-center justify-center gap-3">
-          {digits.map((d, i) => (
+          {activeDigits.map((d, i) => (
             <div key={i} className="h-14 w-14 rounded-2xl bg-gray-100 grid place-items-center text-xl font-semibold text-gray-800 shadow-sm">
-              {d || ""}
+              {d ? "●" : ""}
             </div>
           ))}
         </div>
@@ -106,6 +150,7 @@ export default function TransactionPinScreen({ onBack, onSubmit }: Props) {
               key={i}
               onClick={() => (k === "←" ? pop() : k !== "" ? push(k) : null)}
               className={`h-10 ${k === "" ? "pointer-events-none" : ""}`}
+              disabled={isLoading}
             >
               {k}
             </button>
@@ -114,12 +159,12 @@ export default function TransactionPinScreen({ onBack, onSubmit }: Props) {
 
         <button
           onClick={handleSubmit}
-          disabled={!canSubmit}
+          disabled={!canSubmit || isLoading}
           className={`mt-10 w-full rounded-xl py-4 font-semibold ${
-            canSubmit ? "bg-green-600 text-white" : "bg-gray-300 text-gray-500"
+            canSubmit && !isLoading ? "bg-green-600 text-white" : "bg-gray-300 text-gray-500"
           }`}
         >
-          Submit
+          {isLoading ? "Verifying..." : mode === "create" ? (step === "pin" ? "Continue" : "Set PIN") : "Submit"}
         </button>
       </div>
       {/* Animations */}

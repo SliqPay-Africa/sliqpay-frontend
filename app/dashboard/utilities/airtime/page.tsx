@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronDown, User, AlertCircle, Wallet, Banknote, Loader2 } from "lucide-react";
 import NetworkPickerSheet, { Network } from "@/components/utilities/NetworkPickerSheet";
@@ -22,8 +22,26 @@ export default function BuyAirtime() {
   const [showPreview, setShowPreview] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'fiat' | 'crypto'>('fiat');
   const [cryptoError, setCryptoError] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [hasPin, setHasPin] = useState<boolean | null>(null); // null = loading
   const minAmount = 5;
   const maxAmount = 50000;
+
+  // Check if user has a transaction PIN set
+  useEffect(() => {
+    const checkPin = async () => {
+      try {
+        const token = localStorage.getItem("sliqpay_token");
+        const res = await axios.get(`${backendUrl}/user/pin/status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setHasPin(res.data?.hasPin ?? false);
+      } catch {
+        setHasPin(false);
+      }
+    };
+    checkPin();
+  }, []);
 
   const networks: Network[] = [
     { code: "MTN", name: "MTN", logo: "/product-logos/mtn.jpg" },
@@ -54,8 +72,34 @@ export default function BuyAirtime() {
   const handlePinSubmit = async (pin: string) => {
     setIsSubmitting(true);
     setCryptoError(null);
+    setPinError(null);
     
     try {
+      const token = localStorage.getItem("sliqpay_token");
+      
+      // If user hasn't set a PIN yet, set it first
+      if (!hasPin) {
+        const setPinRes = await axios.post(
+          `${backendUrl}/user/pin/set`,
+          { pin },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (setPinRes.data?.ok) {
+          setHasPin(true);
+        }
+      } else {
+        // Verify existing PIN
+        const verifyRes = await axios.post(
+          `${backendUrl}/user/pin/verify`,
+          { pin },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!verifyRes.data?.ok) {
+          throw new Error('Incorrect PIN');
+        }
+      }
+
+      // PIN is valid — proceed with payment
       if (paymentMethod === 'crypto') {
         // Custodial crypto flow — backend handles on-chain tx + VTPass
         const token = localStorage.getItem("sliqpay_token");
@@ -93,6 +137,14 @@ export default function BuyAirtime() {
     } catch (error: any) {
       console.error("Payment failed:", error);
       const msg = error?.response?.data?.error || error?.message || 'Payment failed';
+      
+      // If it's a PIN error, stay on PIN screen
+      if (msg.includes('Incorrect PIN') || msg.includes('PIN')) {
+        setPinError(msg);
+        setIsSubmitting(false);
+        return;
+      }
+      
       if (paymentMethod === 'crypto') {
         setCryptoError(msg);
         setIsSubmitting(false);
@@ -114,7 +166,15 @@ export default function BuyAirtime() {
   };
 
   if (stage === 'pin') {
-    return <TransactionPinScreen onBack={() => { setStage('form'); }} onSubmit={handlePinSubmit} />;
+    return (
+      <TransactionPinScreen
+        onBack={() => { setStage('form'); setPinError(null); }}
+        onSubmit={handlePinSubmit}
+        mode={hasPin ? "enter" : "create"}
+        error={pinError}
+        isLoading={isSubmitting}
+      />
+    );
   }
 
   if (stage === 'success') {

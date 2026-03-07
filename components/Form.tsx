@@ -166,6 +166,10 @@ export default function Form({ formtype }: FormProp) {
                 walletType: response.user.walletType || undefined,
               };
               localStorage.setItem('sliqpay_user', JSON.stringify(userData));
+              // Store JWT token for Bearer auth (cross-origin)
+              if (response?.token) {
+                localStorage.setItem('sliqpay_token', response.token);
+              }
               // Set a frontend-domain cookie so Next.js middleware can detect the session
               document.cookie = `sliqpay_logged_in=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
               // Immediately update UserContext so it's available on next page
