@@ -43,7 +43,7 @@ export const chains = {
 export type ChainKey = keyof typeof chains;
 
 // Default chain (Moonbase Alpha for SliqPay)
-const defaultChain = chains.moonbase;
+const defaultChain = { name: 'Avalanche Fuji', rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc', chainId: 43113 };
 
 // Magic instance holder (dynamically imported)
 let magicInstance: MagicType | null = null;
@@ -92,7 +92,7 @@ export const getWalletAddress = async (): Promise<string | null> => {
     const metadata = await magic.user.getInfo();
 
     // Extract address from publicAddress or issuer field
-    let address = metadata.publicAddress;
+    let address = metadata.address;
     if (!address && metadata.issuer) {
       const match = metadata.issuer.match(/0x[a-fA-F0-9]{40}/);
       address = match ? match[0] : null;
