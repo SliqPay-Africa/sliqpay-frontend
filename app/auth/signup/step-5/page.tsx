@@ -38,8 +38,8 @@ export default function Step5() {
       // Generate unique phone number using timestamp to avoid duplicate constraint
       const uniquePhone = `+234${Date.now().toString().slice(-10)}`;
       
-      // Extract clean sliqId from user context (remove @ and .sliq.eth)
-      const rawSliqId = user?.sliqId?.replace('@', '').replace('.sliq.eth', '') || '';
+      // Extract clean sliqId from user context (remove .sliq suffix)
+      const rawSliqId = user?.sliqId?.replace('.sliq', '') || '';
       const cleanSliqId = rawSliqId.length >= 3 ? rawSliqId : undefined; // Only send if valid, otherwise let backend auto-generate
       
       const signupData = {

@@ -21,7 +21,7 @@ export default function Step1() {
     if (!isFormValid) return;
     
     // Save user data to context (will be persisted to localStorage)
-    const fullSliqId = sliqId ? `@${sliqId}.sliq.eth` : '';
+    const fullSliqId = sliqId ? `${sliqId}.sliq` : '';
     setUser({
       sliqId: fullSliqId,
       email,
@@ -94,7 +94,7 @@ export default function Step1() {
             )}
             {sliqId && isValidSliqId && (
               <p className="mt-1.5 text-xs text-gray-600">
-                Your Sliq ID: <span className="font-semibold text-cyan-700">@{sliqId}.sliq.eth</span>
+                Your Sliq ID: <span className="font-semibold text-cyan-700">{sliqId}.sliq</span>
               </p>
             )}
             {!sliqId && (

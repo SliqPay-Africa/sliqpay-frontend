@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { UserProvider } from '@/contexts/UserContext';
 import { MagicProvider } from '@/components/providers/MagicProvider';
 import { QueryProvider } from '@/components/providers/QueryProvider';
+import { Web3Provider } from '@/components/Web3Provider';
 import { Toaster } from '@/components/ui/toaster';
 
 
@@ -24,14 +25,16 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <QueryProvider>
-          <MagicProvider>
-            <UserProvider>
-              {children}
-              <Toaster />
-            </UserProvider>
-          </MagicProvider>
-        </QueryProvider>
+        <Web3Provider>
+          <QueryProvider>
+            <MagicProvider>
+              <UserProvider>
+                {children}
+                <Toaster />
+              </UserProvider>
+            </MagicProvider>
+          </QueryProvider>
+        </Web3Provider>
       </body>
     </html>
   );

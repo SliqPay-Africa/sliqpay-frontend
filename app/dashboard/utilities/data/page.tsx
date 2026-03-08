@@ -2,24 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, User, AlertCircle } from "lucide-react";
+import { ArrowLeft, ChevronDown, User, AlertCircle, Wallet, Banknote } from "lucide-react";
 import NetworkPickerSheet, { Network } from "@/components/utilities/NetworkPickerSheet";
 import TransactionPinScreen from "@/components/utilities/TransactionPinScreen";
 import AirtimeSuccessScreen from "@/components/utilities/AirtimeSuccessScreen";
 import { useUser } from "@/contexts/UserContext";
 import { createTransaction } from "@/lib/accounts";
+import { useExternalWalletPayment } from "@/hooks/useExternalWalletPayment";
 import axios from "axios";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000/api/v1";
 
 export default function BuyData() {
   const router = useRouter();
-  const { balance, refreshAccount, account } = useUser();
+  const { balance, refreshAccount, account, user } = useUser();
+  const walletPayment = useExternalWalletPayment();
   const [country, setCountry] = useState("");
   const [network, setNetwork] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'fiat' | 'crypto'>('fiat');
+  const [cryptoError, setCryptoError] = useState<string | null>(null);
   type Stage = 'form' | 'pin' | 'success';
   const [stage, setStage] = useState<Stage>('form');
   const [networkSheetOpen, setNetworkSheetOpen] = useState(false);
@@ -52,7 +56,8 @@ export default function BuyData() {
     { code: "GLO", name: "GLO", logo: "/product-logos/glo.jpg" },
   ];
 
-  const isAmountValid = amount && !isNaN(Number(amount)) && Number(amount) >= minAmount && Number(amount) <= maxAmount && Number(amount) <= balance;
+  const isAmountInRange = amount && !isNaN(Number(amount)) && Number(amount) >= minAmount && Number(amount) <= maxAmount;
+  const isAmountValid = isAmountInRange && (paymentMethod === 'crypto' || Number(amount) <= balance);
   const isFormValid = country && network && phoneNumber.length >= 10 && isAmountValid;
 
   const handleContinue = () => {
@@ -68,6 +73,7 @@ export default function BuyData() {
   const handlePinSubmit = async (pin: string) => {
     setIsSubmitting(true);
     setPinError(null);
+    setCryptoError(null);
     try {
       const token = localStorage.getItem("sliqpay_token");
       
@@ -88,17 +94,40 @@ export default function BuyData() {
         if (!verifyRes.data?.ok) throw new Error('Incorrect PIN');
       }
 
-      // Create debit transaction for data purchase
-      if (account?.id) {
-        await createTransaction({
-          accountId: account.id,
-          amount: Number(amount),
-          type: 'debit',
-          description: `Data purchase - ${networks.find(n => n.code === network)?.name || network} (${phoneNumber})`
-        });
+      if (paymentMethod === 'crypto') {
+        // External wallet — prompt user's wallet to send AVAX
+        const txHash = await walletPayment.pay(Number(amount));
+        
+        // Send txHash to backend for verification + VTPass
+        const res = await axios.post(
+          `${backendUrl}/pay-with-crypto/airtime`,
+          {
+            txHash,
+            phone: phoneNumber,
+            network,
+            amount: Number(amount),
+            sliqId: user?.sliqId || 'unknown',
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.data?.success) {
+          setIsSubmitting(false);
+          setStage('success');
+        } else {
+          throw new Error(res.data?.error || 'Crypto payment failed');
+        }
+      } else {
+        // Fiat: Create debit transaction for data purchase
+        if (account?.id) {
+          await createTransaction({
+            accountId: account.id,
+            amount: Number(amount),
+            type: 'debit',
+            description: `Data purchase - ${networks.find(n => n.code === network)?.name || network} (${phoneNumber})`
+          });
+        }
+        setTimeout(() => { setIsSubmitting(false); setStage('success'); }, 1000);
       }
-      
-      setTimeout(() => { setIsSubmitting(false); setStage('success'); }, 1000);
     } catch (error: any) {
       console.error("Failed:", error);
       const msg = error?.response?.data?.error || error?.message || 'Failed';
@@ -107,7 +136,14 @@ export default function BuyData() {
         setIsSubmitting(false);
         return;
       }
-      setTimeout(() => { setIsSubmitting(false); setStage('success'); }, 1000);
+      if (paymentMethod === 'crypto') {
+        setCryptoError(msg);
+        setIsSubmitting(false);
+        setStage('form');
+        setShowPreview(false);
+      } else {
+        setTimeout(() => { setIsSubmitting(false); setStage('success'); }, 1000);
+      }
     }
   };
 
@@ -274,6 +310,52 @@ export default function BuyData() {
             <AlertCircle size={16} className="mt-0.5" />
             <p className="text-xs">Please enter an amount between ₦{minAmount} and ₦{maxAmount.toLocaleString()}</p>
           </div>
+        </div>
+
+        {/* Payment Method Selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-900 mb-2">Payment Method</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => { setPaymentMethod('fiat'); setCryptoError(null); }}
+              className={`flex items-center gap-2 justify-center py-3 px-4 rounded-xl border-2 transition-all text-sm font-semibold ${
+                paymentMethod === 'fiat'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <Banknote size={18} />
+              Fiat Balance
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPaymentMethod('crypto'); setCryptoError(null); }}
+              className={`flex items-center gap-2 justify-center py-3 px-4 rounded-xl border-2 transition-all text-sm font-semibold ${
+                paymentMethod === 'crypto'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <Wallet size={18} />
+              Crypto (AVAX)
+            </button>
+          </div>
+          {paymentMethod === 'crypto' && walletPayment.isConnected && walletPayment.walletAddress && (
+            <p className="text-xs text-gray-500 mt-2">
+              Paying from wallet: <span className="font-mono">{walletPayment.walletAddress.slice(0, 6)}...{walletPayment.walletAddress.slice(-4)}</span>
+            </p>
+          )}
+          {paymentMethod === 'crypto' && !walletPayment.isConnected && (
+            <p className="text-xs text-amber-600 mt-2">
+              Your external wallet (MetaMask, Phantom, etc.) will be prompted when you pay.
+            </p>
+          )}
+          {cryptoError && (
+            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-xs text-red-600">{cryptoError}</p>
+            </div>
+          )}
         </div>
 
         <button

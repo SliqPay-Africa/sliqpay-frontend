@@ -8,6 +8,7 @@ import TransactionPinScreen from "@/components/utilities/TransactionPinScreen";
 import AirtimeSuccessScreen from "@/components/utilities/AirtimeSuccessScreen";
 import { useUser } from "@/contexts/UserContext";
 import { createTransaction } from "@/lib/accounts";
+import { useExternalWalletPayment } from "@/hooks/useExternalWalletPayment";
 import axios from "axios";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000/api/v1";
@@ -15,6 +16,7 @@ const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000
 export default function BuyAirtime() {
   const router = useRouter();
   const { balance, refreshAccount, account, user } = useUser();
+  const walletPayment = useExternalWalletPayment();
   const [country, setCountry] = useState("Nigeria");
   const [network, setNetwork] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -101,11 +103,15 @@ export default function BuyAirtime() {
 
       // PIN is valid — proceed with payment
       if (paymentMethod === 'crypto') {
-        // Custodial crypto flow — backend handles on-chain tx + VTPass
+        // External wallet flow — prompt user's wallet (MetaMask, etc.) to send AVAX
+        const txHash = await walletPayment.pay(Number(amount));
+        
+        // Send txHash to backend for on-chain verification + VTPass airtime purchase
         const token = localStorage.getItem("sliqpay_token");
         const res = await axios.post(
-          `${backendUrl}/pay-with-crypto/custodial-airtime`,
+          `${backendUrl}/pay-with-crypto/airtime`,
           {
+            txHash,
             phone: phoneNumber,
             network,
             amount: Number(amount),
@@ -239,12 +245,12 @@ export default function BuyAirtime() {
                 {paymentMethod === 'crypto' ? '🔗 Crypto (AVAX)' : '💵 Fiat Balance'}
               </span>
             </div>
-            {paymentMethod === 'crypto' && user?.walletAddress && (
+            {paymentMethod === 'crypto' && walletPayment.isConnected && walletPayment.walletAddress && (
               <>
                 <div className="h-px bg-gray-200"></div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-sm text-gray-600">Wallet</span>
-                  <span className="text-xs font-mono text-gray-500">{user.walletAddress.slice(0, 6)}...{user.walletAddress.slice(-4)}</span>
+                  <span className="text-xs font-mono text-gray-500">{walletPayment.walletAddress.slice(0, 6)}...{walletPayment.walletAddress.slice(-4)}</span>
                 </div>
               </>
             )}
@@ -391,14 +397,14 @@ export default function BuyAirtime() {
               Crypto (AVAX)
             </button>
           </div>
-          {paymentMethod === 'crypto' && user?.walletAddress && (
+          {paymentMethod === 'crypto' && walletPayment.isConnected && walletPayment.walletAddress && (
             <p className="text-xs text-gray-500 mt-2">
-              Paying from wallet: <span className="font-mono">{user.walletAddress.slice(0, 6)}...{user.walletAddress.slice(-4)}</span>
+              Paying from wallet: <span className="font-mono">{walletPayment.walletAddress.slice(0, 6)}...{walletPayment.walletAddress.slice(-4)}</span>
             </p>
           )}
-          {paymentMethod === 'crypto' && !user?.walletAddress && (
+          {paymentMethod === 'crypto' && !walletPayment.isConnected && (
             <p className="text-xs text-amber-600 mt-2">
-              No crypto wallet found. One will be created on your next login.
+              Your external wallet (MetaMask, Phantom, etc.) will be prompted when you pay.
             </p>
           )}
           {cryptoError && (
