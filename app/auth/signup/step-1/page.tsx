@@ -68,7 +68,7 @@ export default function Step1() {
             <label className="block text-sm text-gray-700 mb-2">
               Create Sliq ID <span className="text-gray-400 font-normal">(Optional)</span>
             </label>
-            <div className="relative">
+            <div className="flex items-center rounded-xl bg-gray-100 border border-gray-200 focus-within:ring-2 focus-within:ring-cyan-500 overflow-hidden">
               <input 
                 value={sliqId} 
                 onChange={(e)=>{
@@ -77,15 +77,12 @@ export default function Step1() {
                   setSliqId(cleaned.toLowerCase());
                 }} 
                 type="text" 
-                placeholder="username" 
-                className="w-full rounded-xl bg-gray-100 border border-gray-200 pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-cyan-500" 
+                placeholder="your username" 
+                className="flex-1 bg-transparent px-4 py-3 outline-none text-gray-800 min-w-0" 
                 minLength={3}
                 maxLength={30}
               />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">@</span>
-              {sliqId && isValidSliqId && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600">✔</span>
-              )}
+              <span className="pr-4 text-cyan-700 font-semibold text-sm whitespace-nowrap select-none">.sliq</span>
             </div>
             {sliqId && !isValidSliqId && (
               <p className="mt-1.5 text-xs text-red-500">

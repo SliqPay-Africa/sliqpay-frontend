@@ -16,7 +16,7 @@ const metadata = {
   icons: ["https://sliqpay.com/icon.png"],
 };
 
-// TreasuryVault on Avalanche Fuji testnet
+// TreasuryVault deployed on Avalanche Fuji testnet
 export const TREASURY_VAULT_ADDRESS = "0xeD3e610f22bd8cf6e9853978e758D0480e1D7A15" as `0x${string}`;
 export const AVAX_FUJI_CHAIN_ID = 43113;
 

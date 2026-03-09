@@ -92,8 +92,8 @@ export default function Step5() {
         document.cookie = `sliqpay_logged_in=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
       }
 
-      // Wallet is auto-created on the backend — go straight to dashboard
-      router.push("/dashboard");
+      // Wallet is auto-created on the backend — proceed to PIN setup
+      router.push("/auth/signup/step-6");
     } catch (err: any) {
       console.error("Signup error:", err);
       setError(err.message || "Failed to create account. Please try again.");
@@ -113,8 +113,8 @@ export default function Step5() {
       </div>
 
       <div className="max-w-md mx-auto mt-6">
-        <SignupProgress currentStep={5} />
-        <p className="text-xs text-gray-600 mt-1">Step 5</p>
+        <SignupProgress currentStep={5} totalSteps={6} />
+        <p className="text-xs text-gray-600 mt-1">Step 5 of 6</p>
 
         <h2 className="mt-6 text-xl font-extrabold">Create Password</h2>
         <p className="text-sm text-gray-500">Enter Password for app security</p>

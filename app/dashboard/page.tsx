@@ -17,12 +17,17 @@ import {
     TrendingUp,
     RefreshCw,
     Gift,
+    Lock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { getTransactionsByAccount, Transaction } from "@/lib/accounts";
 import { useBalances, useTransactions, useCurrentUser } from "@/lib/api-hooks";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
+import TransactionPinScreen from "@/components/utilities/TransactionPinScreen";
+
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000/api/v1";
 
 /* ───── Skeleton ───── */
 function DashboardSkeleton() {
@@ -59,6 +64,35 @@ export default function DashboardHome() {
     const [isLoading, setIsLoading] = useState(true);
     const [accountsOpen, setAccountsOpen] = useState(false);
     const [copiedWallet, setCopiedWallet] = useState(false);
+    const [hasPin, setHasPin] = useState<boolean | null>(null);
+    const [showPinModal, setShowPinModal] = useState(false);
+    const [pinError, setPinError] = useState<string | null>(null);
+    const [pinLoading, setPinLoading] = useState(false);
+
+    // Check if user has a transaction PIN
+    useEffect(() => {
+        const token = localStorage.getItem("sliqpay_token");
+        if (!token) return;
+        axios
+            .get(`${backendUrl}/user/pin/status`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(res => setHasPin(res.data?.hasPin ?? false))
+            .catch(() => setHasPin(null));
+    }, []);
+
+    const handleSetPin = async (pin: string) => {
+        setPinLoading(true);
+        setPinError(null);
+        try {
+            const token = localStorage.getItem("sliqpay_token");
+            await axios.post(`${backendUrl}/user/pin/set`, { pin }, { headers: { Authorization: `Bearer ${token}` } });
+            setHasPin(true);
+            setShowPinModal(false);
+        } catch (err: any) {
+            setPinError(err?.response?.data?.error || "Failed to set PIN. Please try again.");
+        } finally {
+            setPinLoading(false);
+        }
+    };
 
     const { data: web2Balances, isLoading: loadingWeb2Balances } = useBalances();
     const { data: web2Transactions, isLoading: loadingWeb2Transactions } = useTransactions(5);
@@ -129,6 +163,64 @@ export default function DashboardHome() {
 
     return (
         <div className="space-y-4">
+            {/* ─── One-time PIN setup banner ─── */}
+            {hasPin === false && !showPinModal && (
+                <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+                >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                        <Lock size={16} className="text-amber-600" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-semibold text-amber-800">Set up your Transaction PIN</p>
+                        <p className="text-xs text-amber-600">Required to confirm all payments on SliqPay</p>
+                    </div>
+                    <button
+                        onClick={() => setShowPinModal(true)}
+                        className="shrink-0 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 transition-colors"
+                    >
+                        Set PIN
+                    </button>
+                </motion.div>
+            )}
+
+            {/* ─── PIN setup modal ─── */}
+            <AnimatePresence>
+                {showPinModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4"
+                        onClick={(e) => { if (e.target === e.currentTarget) setShowPinModal(false); }}
+                    >
+                        <motion.div
+                            initial={{ y: 40, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 40, opacity: 0 }}
+                            className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-gray-900">Create Transaction PIN</h3>
+                                <button onClick={() => setShowPinModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            {pinError && (
+                                <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{pinError}</p>
+                            )}
+                            <TransactionPinScreen
+                                onBack={() => setShowPinModal(false)}
+                                onSubmit={handleSetPin}
+                                mode="create"
+                                isLoading={pinLoading}
+                            />
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             {/* Desktop greeting */}
             <div className="hidden lg:flex items-center justify-between mb-1">
                 <div>

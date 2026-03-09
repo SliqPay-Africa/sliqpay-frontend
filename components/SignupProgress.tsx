@@ -14,7 +14,7 @@ type Props = {
  * - Dots up to and including currentStep are green; others are gray.
  * - Connectors before the current step are green; others are gray.
  */
-export default function SignupProgress({ currentStep, totalSteps = 5, className = "" }: Props) {
+export default function SignupProgress({ currentStep, totalSteps = 6, className = "" }: Props) {
   const clamped = Math.max(1, Math.min(currentStep, totalSteps));
   return (
     <div
