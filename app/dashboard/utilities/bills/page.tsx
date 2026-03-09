@@ -46,6 +46,8 @@ export default function PayBills() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   const [hasPin, setHasPin] = useState<boolean | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [electricityToken, setElectricityToken] = useState<string | undefined>(undefined);
 
   // Check if user has a transaction PIN set
   useEffect(() => {
@@ -64,12 +66,16 @@ export default function PayBills() {
   }, []);
 
   const electricityBillers: Biller[] = [
-    { id: "abuja", name: "Nigeria Abuja Elec. Prepaid", logo: "AEDC" },
-    { id: "benin", name: "Nigeria Benin Elec. Prepaid", logo: "BEDC" },
-    { id: "enugu", name: "Nigeria Enugu Elec. Prepaid", logo: "EEDC" },
-    { id: "ibadan", name: "Nigeria Ibadan Elec. Prepaid", logo: "IBEDC" },
-    { id: "kaduna", name: "Nigeria Kaduna Elec. Prepaid", logo: "KEDC" },
-    { id: "eko", name: "Nigeria Eko Elec. Prepaid", logo: "EKEDC" },
+    { id: "abuja",        name: "Abuja Electric (AEDC)",   logo: "AEDC" },
+    { id: "benin",        name: "Benin Electric (BEDC)",   logo: "BEDC" },
+    { id: "enugu",        name: "Enugu Electric (EEDC)",   logo: "EEDC" },
+    { id: "ibadan",       name: "Ibadan Electric (IBEDC)", logo: "IBEDC" },
+    { id: "kaduna",       name: "Kaduna Electric (KAEDCO)",logo: "KEDC" },
+    { id: "eko",          name: "Eko Electric (EKEDC)",    logo: "EKEDC" },
+    { id: "ikeja",        name: "Ikeja Electric (IKEDC)",  logo: "IKEDC" },
+    { id: "portharcourt", name: "Port Harcourt Electric",  logo: "PHED" },
+    { id: "jos",          name: "Jos Electric (JED)",      logo: "JED" },
+    { id: "kano",         name: "Kano Electric (KEDCO)",   logo: "KEDCO" },
   ];
 
   const cableTvBillers: Biller[] = [
@@ -79,27 +85,34 @@ export default function PayBills() {
     { id: "showmax", name: "Nigeria Showmax", logo: "Show" },
   ];
 
+  // VTPass variation_code → name, price (from VTPass sandbox /service-variations)
   const cableTvPackages: Record<string, Array<{ id: string; name: string; price: number }>> = {
     dstv: [
-      { id: "dstv-padi", name: "DStv Padi Bouque E36", price: 5000 },
-      { id: "dstv-compact", name: "DStv Compact", price: 10500 },
-      { id: "dstv-compact-plus", name: "DStv Compact Plus", price: 16600 },
-      { id: "dstv-premium", name: "DStv Premium", price: 24500 },
+      { id: "dstv-padi",         name: "DStv Padi",           price: 1850 },
+      { id: "dstv-yanga",        name: "DStv Yanga",          price: 2565 },
+      { id: "dstv-confam",       name: "DStv Confam",         price: 4615 },
+      { id: "dstv79",            name: "DStv Compact",        price: 7900 },
+      { id: "dstv7",             name: "DStv Compact Plus",   price: 12400 },
+      { id: "dstv3",             name: "DStv Premium",        price: 18400 },
     ],
     gotv: [
-      { id: "gotv-joli", name: "GOtv Joli", price: 3300 },
-      { id: "gotv-jolli", name: "GOtv Jolli", price: 4150 },
-      { id: "gotv-max", name: "GOtv Max", price: 5700 },
+      { id: "gotv-smallie",      name: "GOtv Smallie",        price: 1575 },
+      { id: "gotv-joli",         name: "GOtv Joli",           price: 2460 },
+      { id: "gotv-jolli",        name: "GOtv Jolli",          price: 3300 },
+      { id: "gotv-max",          name: "GOtv Max",            price: 4150 },
+      { id: "gotv-supa",         name: "GOtv Supa",           price: 5500 },
     ],
     startimes: [
-      { id: "startimes-basic", name: "StarTimes Basic", price: 2200 },
-      { id: "startimes-smart", name: "StarTimes Smart", price: 3200 },
-      { id: "startimes-super", name: "StarTimes Super", price: 5500 },
+      { id: "nova",              name: "StarTimes Nova",      price: 1200 },
+      { id: "basic",             name: "StarTimes Basic",     price: 1850 },
+      { id: "smart",             name: "StarTimes Smart",     price: 2200 },
+      { id: "classic",           name: "StarTimes Classic",   price: 3200 },
+      { id: "super",             name: "StarTimes Super",     price: 4900 },
     ],
     showmax: [
-      { id: "showmax-mobile", name: "Showmax Mobile", price: 1450 },
-      { id: "showmax-standard", name: "Showmax Standard", price: 2900 },
-      { id: "showmax-pro", name: "Showmax Pro", price: 6300 },
+      { id: "showmax-mobile",    name: "Showmax Mobile",      price: 1450 },
+      { id: "showmax-standard",  name: "Showmax Standard",    price: 2900 },
+      { id: "showmax-pro",       name: "Showmax Pro",         price: 6300 },
     ],
   };
 
@@ -165,42 +178,88 @@ export default function PayBills() {
       }
 
       const billAmount = category === "Electricity" ? Number(electricityAmount) : (selectedPkg?.price || 0);
-      const description = category === "Electricity" 
-        ? `Electricity - ${selectedBiller?.name || ''} (${meterNumber})`
-        : `Cable TV - ${selectedBiller?.name || ''} - ${selectedPkg?.name || ''} (${smartCardNumber})`;
-      
+      const description = category === "Electricity"
+        ? `Electricity – ${selectedBiller?.name || ""} (${meterNumber})`
+        : `Cable TV – ${selectedBiller?.name || ""} – ${selectedPkg?.name || ""} (${smartCardNumber})`;
+
       if (paymentMethod === 'crypto') {
-        // External wallet — prompt user's wallet to send AVAX
+        // 1. Trigger on-chain payment via external wallet
         const txHash = await walletPayment.pay(billAmount);
-        
-        // Send txHash to backend for verification
-        const res = await axios.post(
-          `${backendUrl}/pay-with-crypto/airtime`,
-          {
-            txHash,
-            phone: category === 'Electricity' ? meterNumber : smartCardNumber,
-            network: selectedBiller?.id || 'bill',
-            amount: billAmount,
-            sliqId: user?.sliqId || 'unknown',
-          },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (res.data?.success) {
-          setIsSubmitting(false);
-          setStage('success');
+
+        // 2. Show processing screen while VTPass runs
+        setIsSubmitting(false);
+        setIsProcessing(true);
+
+        const authToken = localStorage.getItem("sliqpay_token");
+
+        if (category === 'Electricity') {
+          // 2a. Electricity: send to /pay-with-crypto/electricity
+          const res = await axios.post(
+            `${backendUrl}/pay-with-crypto/electricity`,
+            {
+              txHash,
+              meterNumber,
+              billerId: selectedBiller?.id || '',
+              meterType: 'prepaid',
+              amount: billAmount,
+              phone: meterNumber,
+              sliqId: user?.sliqId || 'unknown',
+            },
+            { headers: { Authorization: `Bearer ${authToken}` } }
+          );
+          if (!res.data?.success) throw new Error(res.data?.error || 'Electricity payment failed');
+          if (res.data?.token) setElectricityToken(res.data.token);
         } else {
-          throw new Error(res.data?.error || 'Crypto payment failed');
+          // 2b. Cable TV: send to /pay-with-crypto/cable-tv
+          const res = await axios.post(
+            `${backendUrl}/pay-with-crypto/cable-tv`,
+            {
+              txHash,
+              smartCardNumber,
+              billerId: selectedBiller?.id || '',
+              variationCode: selectedPkg?.id || '',
+              amount: billAmount,
+              phone: smartCardNumber,
+              sliqId: user?.sliqId || 'unknown',
+            },
+            { headers: { Authorization: `Bearer ${authToken}` } }
+          );
+          if (!res.data?.success) throw new Error(res.data?.error || 'Cable TV payment failed');
         }
+
+        setIsProcessing(false);
+        setStage('success');
       } else {
-        // Fiat: Create debit transaction for bill payment
+        // Fiat: validate balance, deduct, then fulfil via VTPass fiat endpoint
+        if (billAmount > balance) {
+          throw new Error('Insufficient balance. Please top up or use Crypto payment.');
+        }
         if (account?.id) {
           await createTransaction({
             accountId: account.id,
             amount: billAmount,
             type: 'debit',
-            description: description
+            description,
           });
         }
+
+        const authToken = localStorage.getItem("sliqpay_token");
+        // Fire-and-forget VTPass fulfillment
+        if (category === 'Electricity') {
+          axios.post(
+            `${backendUrl}/pay-with-crypto/fiat/electricity`,
+            { meterNumber, billerId: selectedBiller?.id || '', meterType: 'prepaid', amount: billAmount, phone: meterNumber },
+            { headers: { Authorization: `Bearer ${authToken}` } }
+          ).then(r => { if (r.data?.token) setElectricityToken(r.data.token); })
+           .catch((e) => console.warn('VTPass fiat electricity call failed silently:', e.message));
+        } else {
+          axios.post(
+            `${backendUrl}/pay-with-crypto/fiat/cable-tv`,
+            { smartCardNumber, billerId: selectedBiller?.id || '', variationCode: selectedPkg?.id || '', amount: billAmount, phone: smartCardNumber },
+            { headers: { Authorization: `Bearer ${authToken}` } }
+          ).catch((e) => console.warn('VTPass fiat cable TV call failed silently:', e.message));
+        }
+
         setTimeout(() => { setIsSubmitting(false); setStage('success'); }, 1000);
       }
     } catch (error: any) {
@@ -214,10 +273,12 @@ export default function PayBills() {
       if (paymentMethod === 'crypto') {
         setCryptoError(msg);
         setIsSubmitting(false);
+        setIsProcessing(false);
         setStage('form');
         setShowPreview(false);
       } else {
-        setTimeout(() => { setIsSubmitting(false); setStage('success'); }, 1000);
+        setCryptoError(msg);
+        setIsSubmitting(false);
       }
     }
   };
@@ -235,16 +296,19 @@ export default function PayBills() {
   }
 
   if (stage === 'success') {
-    const amount = category === "Electricity" ? Number(electricityAmount || 0) : (selectedPkg?.price || 0);
+    const successAmount = category === "Electricity" ? Number(electricityAmount || 0) : (selectedPkg?.price || 0);
     const detailLabel = category === 'Electricity' ? 'Meter Number' : 'Smart Card Number';
     const detailValue = category === 'Electricity' ? meterNumber : smartCardNumber;
     return (
       <AirtimeSuccessScreen
-        amount={amount}
+        amount={successAmount}
         phone={detailValue}
         detailLabel={detailLabel}
         networkName={selectedBiller?.name || ''}
-        orderType={category.toUpperCase()}
+        orderType={category === 'Electricity' ? 'ELECTRICITY' : 'CABLE TV'}
+        electricityToken={electricityToken}
+        planName={category === 'Cable TV' ? selectedPkg?.name : undefined}
+        isProcessing={isProcessing}
         onDone={async () => {
           await refreshAccount();
           router.push('/dashboard');

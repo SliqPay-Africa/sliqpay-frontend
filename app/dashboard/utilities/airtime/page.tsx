@@ -55,6 +55,7 @@ export default function BuyAirtime() {
   type Stage = 'form' | 'pin' | 'success';
   const [stage, setStage] = useState<Stage>('form');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // VTPass fulfilment in-progress
 
   const isAmountInRange = amount && !isNaN(Number(amount)) && Number(amount) >= minAmount && Number(amount) <= maxAmount;
   const isAmountValid = isAmountInRange && (paymentMethod === 'crypto' || Number(amount) <= balance);
@@ -103,11 +104,15 @@ export default function BuyAirtime() {
 
       // PIN is valid — proceed with payment
       if (paymentMethod === 'crypto') {
-        // External wallet flow — prompt user's wallet (MetaMask, etc.) to send AVAX
+        // Step 1: Trigger on-chain payment via external wallet
         const txHash = await walletPayment.pay(Number(amount));
-        
-        // Send txHash to backend for on-chain verification + VTPass airtime purchase
-        const token = localStorage.getItem("sliqpay_token");
+
+        // Step 2: Show processing screen while VTPass fulfils
+        setIsSubmitting(false);
+        setIsProcessing(true);
+
+        // Step 3: Verify on-chain + call VTPass on backend
+        const authToken = localStorage.getItem("sliqpay_token");
         const res = await axios.post(
           `${backendUrl}/pay-with-crypto/airtime`,
           {
@@ -117,16 +122,19 @@ export default function BuyAirtime() {
             amount: Number(amount),
             sliqId: user?.sliqId || 'unknown',
           },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${authToken}` } }
         );
+        setIsProcessing(false);
         if (res.data?.success) {
-          setIsSubmitting(false);
           setStage('success');
         } else {
           throw new Error(res.data?.error || 'Crypto payment failed');
         }
       } else {
-        // Fiat flow — debit from account balance
+        // Fiat flow — verify balance then debit + call VTPass
+        if (Number(amount) > balance) {
+          throw new Error('Insufficient balance. Please top up your account or use Crypto payment.');
+        }
         if (account?.id) {
           await createTransaction({
             accountId: account.id,
@@ -135,6 +143,14 @@ export default function BuyAirtime() {
             description: `Airtime purchase - ${networks.find(n => n.code === network)?.name || network} (${phoneNumber})`
           });
         }
+        // Fire-and-forget VTPass airtime purchase
+        const authToken = localStorage.getItem("sliqpay_token");
+        axios.post(
+          `${backendUrl}/pay-with-crypto/fiat/airtime`,
+          { phone: phoneNumber, network, amount: Number(amount), sliqId: user?.sliqId || 'unknown' },
+          { headers: { Authorization: `Bearer ${authToken}` } }
+        ).catch((e) => console.warn('VTPass fiat airtime call failed silently:', e.message));
+
         setTimeout(() => {
           setIsSubmitting(false);
           setStage('success');
@@ -154,14 +170,13 @@ export default function BuyAirtime() {
       if (paymentMethod === 'crypto') {
         setCryptoError(msg);
         setIsSubmitting(false);
+        setIsProcessing(false);
         setStage('form');
         setShowPreview(false);
       } else {
-        // Fiat fallback: still proceed for UX
-        setTimeout(() => {
-          setIsSubmitting(false);
-          setStage('success');
-        }, 1200);
+        // Fiat error: show error inline
+        setCryptoError(msg);
+        setIsSubmitting(false);
       }
     }
   };
@@ -190,6 +205,8 @@ export default function BuyAirtime() {
         phone={phoneNumber}
         networkName={networks.find(n => n.code === network)?.name || network}
         networkLogo={networks.find(n => n.code === network)?.logo}
+        orderType="AIRTIME"
+        isProcessing={isProcessing}
         onDone={async () => {
           await refreshAccount();
           router.push('/dashboard');
