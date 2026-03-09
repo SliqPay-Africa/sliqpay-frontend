@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Form from "@/components/Form";
 
 export default function Signup() {
-    const [showForm, setShowForm] = useState(false);
     const [language, setLanguage] = useState("English (US)");
     const router = useRouter();
 
@@ -33,8 +31,7 @@ export default function Signup() {
                 </div>
             </div>
 
-            {!showForm ? (
-                <div className="w-full max-w-md mt-10">
+            <div className="w-full max-w-md mt-10">
                     <div className="text-center mb-6">
                         <h1 className="text-2xl font-extrabold mb-1 tracking-tight">Welcome to Sliqpay</h1>
                         <p className="text-sm text-gray-500">To continue choose preferred Language for the app</p>
@@ -54,17 +51,12 @@ export default function Signup() {
                         </select>
                         <button
                             className="mt-6 w-full bg-green-600 text-white py-3 rounded-xl font-medium hover:bg-green-700"
-                            onClick={() => setShowForm(true)}
+                            onClick={() => router.push("/auth/signup/get-started")}
                         >
                             Continue with {language}
                         </button>
                     </div>
                 </div>
-            ) : (
-                <div className="w-full max-w-md mt-6">
-                    <Form formtype="signup" />
-                </div>
-            )}
         </div>
     );
 }
