@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, useInView, AnimatePresence, type Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 
 /* ─── animation variants ─── */
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number = 0) => ({
     opacity: 1,
@@ -35,16 +35,16 @@ const fadeUp = {
   }),
 };
 
-const scaleIn = {
+const scaleIn: Variants = {
   hidden: { opacity: 0, scale: 0.9 },
   visible: {
     opacity: 1,
     scale: 1,
-    transition: { duration: 0.5, ease: "easeOut" },
+    transition: { duration: 0.5, ease: "easeOut" as const },
   },
 };
 
-const slideInLeft = {
+const slideInLeft: Variants = {
   hidden: { opacity: 0, x: -60 },
   visible: {
     opacity: 1,
@@ -53,7 +53,7 @@ const slideInLeft = {
   },
 };
 
-const slideInRight = {
+const slideInRight: Variants = {
   hidden: { opacity: 0, x: 60 },
   visible: {
     opacity: 1,
@@ -62,7 +62,7 @@ const slideInRight = {
   },
 };
 
-const stagger = {
+const stagger: Variants = {
   visible: { transition: { staggerChildren: 0.1 } },
 };
 

@@ -104,10 +104,13 @@ export default function BuyAirtime() {
       // PIN is valid — proceed with payment
       if (paymentMethod === 'crypto') {
         // External wallet flow — prompt user's wallet (MetaMask, etc.) to send AVAX
-        const txHash = await walletPayment.pay(Number(amount));
-        
-        // Send txHash to backend for on-chain verification + VTPass airtime purchase
-        const token = localStorage.getItem("sliqpay_token");
+const txHash = await walletPayment.pay(Number(amount));
+
+// Wait for tx to propagate to RPC node before backend verifies
+await new Promise(resolve => setTimeout(resolve, 4000));
+
+// Send txHash to backend for on-chain verification + VTPass airtime purchase
+const token = localStorage.getItem("sliqpay_token");
         const res = await axios.post(
           `${backendUrl}/pay-with-crypto/airtime`,
           {
@@ -337,7 +340,7 @@ export default function BuyAirtime() {
                 const value = e.target.value.replace(/\D/g, '');
                 setPhoneNumber(value);
               }}
-              className="w-full px-4 py-3 pr-12 bg-gray-100 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full px-4 py-3 pr-12 bg-gray-100 text-gray-900 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
             <button className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-200 rounded-lg">
               <User size={20} className="text-gray-500" />
@@ -360,7 +363,7 @@ export default function BuyAirtime() {
               const value = e.target.value.replace(/\D/g, '');
               setAmount(value);
             }}
-            className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="w-full px-4 py-3 bg-gray-100 text-gray-900 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
           <div className="mt-3 flex items-start gap-2 text-gray-500">
             <AlertCircle size={16} className="mt-0.5" />
