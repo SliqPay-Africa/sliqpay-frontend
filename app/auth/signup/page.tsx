@@ -3,5 +3,5 @@
 import Form from "@/components/Form";
 
 export default function Signup() {
-    return <Form formtype="signup" />;
+  return <Form formtype="signup" />;
 }

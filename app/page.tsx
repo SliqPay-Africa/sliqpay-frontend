@@ -484,10 +484,9 @@ export default function LandingPage() {
                     {l.label}
                   </a>
                 ))}
-                <hr className="border-gray-200 dark:border-white/10 my-2" />
                 <Button
                   asChild
-                  className="rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 text-white w-full mt-2 font-semibold"
+                  className="rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 text-white w-full mt-3 font-semibold"
                 >
                   <Link href="/auth/signup">Get Started</Link>
                 </Button>
@@ -1049,13 +1048,11 @@ export default function LandingPage() {
             {/* brand */}
             <div className="lg:col-span-2 space-y-5">
               <Link href="/" className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                  <img
-                    src="/Sliqpay visual icon.png"
-                    alt="SliqPay"
-                    className="w-5 h-5 object-contain"
-                  />
-                </div>
+                <img
+                  src="/Sliqpay visual icon.png"
+                  alt="SliqPay"
+                  className="w-8 h-8 object-contain"
+                />
                 <span className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">
                   SliqPay
                 </span>

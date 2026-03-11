@@ -3,5 +3,5 @@
 import Form from "@/components/Form";
 
 export default function Login() {
-    return <Form formtype="login" />;
+  return <Form formtype="login" />;
 }

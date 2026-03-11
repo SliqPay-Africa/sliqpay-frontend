@@ -2,6 +2,6 @@
 
 import Form from "@/components/Form";
 
-export default function ForgotPasswordPage() {
-    return <Form formtype="forgot" />;
+export default function ForgotPassword() {
+  return <Form formtype="forgot" />;
 }

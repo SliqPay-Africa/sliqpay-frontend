@@ -4,7 +4,7 @@ import MobileHeader from "@/components/dashboard/MobileHeader";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="min-h-screen bg-gray-50/60 dark:bg-[#080b12]">
+        <div className="min-h-screen bg-gray-50/80 dark:bg-[#080b12]">
             {/* Mobile header */}
             <MobileHeader />
 
@@ -24,7 +24,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Mobile: just content */}
             <main className="lg:hidden">
-                <div className="px-4 py-4 pb-24">
+                <div className="px-4 pt-3 pb-28">
                     {children}
                 </div>
             </main>

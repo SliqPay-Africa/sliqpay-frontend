@@ -16,7 +16,6 @@ import {
     LogOut,
     HelpCircle,
     ChevronRight,
-    User,
     X,
 } from "lucide-react";
 
@@ -36,8 +35,8 @@ const mainNavItems = [
 ];
 
 const bottomNavItems = [
-    { label: "Settings", href: "/dashboard/settings", icon: Settings },
-    { label: "Help & Support", href: "/dashboard/help", icon: HelpCircle },
+    { label: "Settings", href: "/dashboard/history", icon: Settings },
+    { label: "Help & Support", href: "/dashboard/history", icon: HelpCircle },
 ];
 
 export default function Sidebar({ className, variant = "desktop", onClose }: SidebarProps) {
@@ -70,10 +69,8 @@ export default function Sidebar({ className, variant = "desktop", onClose }: Sid
     return (
         <aside
             className={cn(
-                "flex flex-col h-full bg-white",
-                variant === "desktop"
-                    ? "w-72 border-r border-gray-100"
-                    : "w-full overflow-y-auto",
+                "flex flex-col h-full bg-white dark:bg-[#0d1117] border-r border-gray-100 dark:border-white/5",
+                variant === "desktop" ? "w-72" : "w-full overflow-y-auto",
                 className
             )}
         >
@@ -81,17 +78,13 @@ export default function Sidebar({ className, variant = "desktop", onClose }: Sid
             <div className="px-6 pt-8 pb-2">
                 <div className="flex items-center justify-between">
                     <Link href="/dashboard" className="flex items-center gap-2">
-                        <img
-                            src="/Sliqpayvisual12.png"
-                            alt="SliqPay"
-                            className="h-7"
-                        />
+                        <img src="/Sliqpay visual icon.png" alt="SliqPay" className="w-7 h-7 object-contain" />
+                        <span className="text-base font-bold bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">
+                            SliqPay
+                        </span>
                     </Link>
                     {variant === "mobile" && onClose && (
-                        <button
-                            onClick={onClose}
-                            className="p-2 -mr-2 rounded-xl hover:bg-gray-100 transition-colors"
-                        >
+                        <button onClick={onClose} className="p-2 -mr-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
                             <X size={20} className="text-gray-500" />
                         </button>
                     )}
@@ -100,29 +93,27 @@ export default function Sidebar({ className, variant = "desktop", onClose }: Sid
 
             {/* User card */}
             <div className="px-5 py-4">
-                <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 p-3.5 border border-emerald-100/60">
-                    <div className="h-11 w-11 rounded-full bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center text-white text-sm font-bold shadow-md shadow-emerald-200/50">
+                <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 p-3.5 border border-emerald-100/60 dark:border-emerald-500/20">
+                    <div className="h-11 w-11 rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center text-white text-sm font-bold shadow-md shadow-emerald-500/20">
                         {user?.initials || "U"}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                             {user?.name || "User"}
                         </p>
                         {user?.sliqId && (
-                            <p className="text-xs text-emerald-600 font-medium truncate mt-0.5">
-                                {user.sliqId}
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium truncate mt-0.5">
+                                @{user.sliqId}
                             </p>
                         )}
                     </div>
-                    <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+                    <ChevronRight size={16} className="text-gray-400 dark:text-gray-600 flex-shrink-0" />
                 </div>
             </div>
 
-            {/* Main navigation */}
+            {/* Main nav */}
             <nav className="flex-1 px-3 py-2">
-                <p className="px-3 mb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                    Menu
-                </p>
+                <p className="px-3 mb-2 text-[10px] font-semibold text-gray-400 dark:text-gray-600 uppercase tracking-wider">Menu</p>
                 <div className="space-y-0.5">
                     {mainNavItems.map((item) => {
                         const active = isActive(item.href, item.exact);
@@ -134,15 +125,11 @@ export default function Sidebar({ className, variant = "desktop", onClose }: Sid
                                 className={cn(
                                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                                     active
-                                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-200/40"
-                                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                        ? "bg-gradient-to-r from-emerald-500 to-teal-400 text-white shadow-md shadow-emerald-500/20"
+                                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                                 )}
                             >
-                                <item.icon
-                                    size={19}
-                                    strokeWidth={active ? 2.2 : 1.8}
-                                    className={active ? "text-white" : "text-gray-400"}
-                                />
+                                <item.icon size={19} strokeWidth={active ? 2.2 : 1.8} className={active ? "text-white" : "text-gray-400 dark:text-gray-500"} />
                                 <span>{item.label}</span>
                             </Link>
                         );
@@ -151,29 +138,23 @@ export default function Sidebar({ className, variant = "desktop", onClose }: Sid
 
                 {/* Secondary nav */}
                 <div className="mt-6">
-                    <p className="px-3 mb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-                        General
-                    </p>
+                    <p className="px-3 mb-2 text-[10px] font-semibold text-gray-400 dark:text-gray-600 uppercase tracking-wider">General</p>
                     <div className="space-y-0.5">
                         {bottomNavItems.map((item) => {
                             const active = isActive(item.href);
                             return (
                                 <Link
-                                    key={item.href}
+                                    key={item.label}
                                     href={item.href}
                                     onClick={onClose}
                                     className={cn(
                                         "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                                         active
-                                            ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-200/40"
-                                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                            ? "bg-gradient-to-r from-emerald-500 to-teal-400 text-white shadow-md shadow-emerald-500/20"
+                                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
                                     )}
                                 >
-                                    <item.icon
-                                        size={19}
-                                        strokeWidth={active ? 2.2 : 1.8}
-                                        className={active ? "text-white" : "text-gray-400"}
-                                    />
+                                    <item.icon size={19} strokeWidth={active ? 2.2 : 1.8} className={active ? "text-white" : "text-gray-400 dark:text-gray-500"} />
                                     <span>{item.label}</span>
                                 </Link>
                             );
@@ -183,11 +164,11 @@ export default function Sidebar({ className, variant = "desktop", onClose }: Sid
             </nav>
 
             {/* Logout */}
-            <div className="px-3 pb-6 pt-2 border-t border-gray-100 mt-auto">
+            <div className="px-3 pb-6 pt-2 border-t border-gray-100 dark:border-white/5 mt-auto">
                 <button
                     onClick={handleLogout}
                     disabled={loggingOut}
-                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all duration-200 disabled:opacity-50"
+                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200 disabled:opacity-50"
                 >
                     <LogOut size={19} strokeWidth={1.8} />
                     <span>{loggingOut ? "Logging out..." : "Logout"}</span>
