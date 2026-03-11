@@ -7,6 +7,8 @@ import { z } from "zod";
 import { signupSchema, loginSchema, sanitizePhone } from "@/lib/validation/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/contexts/UserContext";
+import Link from "next/link";
+import { Eye, EyeOff, ArrowRight, Loader2, Mail, Lock, User, Phone, AtSign, Gift } from "lucide-react";
 
 type FormInfos = {
   fname: string;
@@ -26,73 +28,24 @@ interface FormProp {
 }
 
 export default function Form({ formtype }: FormProp) {
-    // Add error logging for debugging
-    const [renderError, setRenderError] = useState<string | null>(null);
-
-    useEffect(() => {
-        try {
-            // Log the form type and environment info
-           
-        } catch (error) {
-            console.error("Error in useEffect:", error);
-            setRenderError(error instanceof Error ? error.message : "Unknown error");
-        }
-    }, [formtype]);
-
-    const showField = (field: string) => {
-        if (formtype === "signup") return ["fname","lname","email","phone","sliqId","password","cPassword","refCode"].includes(field);
-        if (formtype === "login") return field === "email" || field === "password";
-        if (formtype === "forgot") return field === "email";
-        return false;
-    };
-
-    const formHeading = (): { title: string; subtitle: string } => {
-        switch (formtype) {
-            case "signup":
-            return {
-                title: "Create your account",
-                subtitle:
-                "Join thousands of users who trust Sliqpay for their digital lifestyle needs",
-            };
-            case "login":
-            return {
-                title: "Welcome back",
-                subtitle: "Sign in to your account to continue where you left off",
-            };
-            case "forgot":
-            return {
-                title: "Forgot Password?",
-                subtitle: "Enter your email to reset your password",
-            };
-            default:
-            return {
-                title: "",
-                subtitle: "",
-            };
-        }
-    };
-
-    const { title, subtitle } = formHeading();
     const [showPassword, setShowPassword] = useState(false);
-    const [rememberMe, setRememberMe] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const [formInfos, setFormInfos] = useState<FormInfos>({
-        fname: "",
-        lname: "",
-        email: "",
-        phone: "",
-        password: "",
-        cPassword: "",
-        refCode: "",
-        sliqId: "",
+        fname: "", lname: "", email: "", phone: "",
+        password: "", cPassword: "", refCode: "", sliqId: "",
     });
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
-    const [fieldErrors, setFieldErrors] = useState<Record<string,string>>({});
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const router = useRouter();
     const { toast } = useToast();
     const { setUser } = useUser();
+
+    const isLogin = formtype === "login";
+    const isSignup = formtype === "signup";
+    const isForgot = formtype === "forgot";
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -102,7 +55,7 @@ export default function Form({ formtype }: FormProp) {
         try {
             setLoading(true);
             let payload: any;
-            if (formtype === "signup") {
+            if (isSignup) {
               const parsed = signupSchema.safeParse({ ...formInfos, phone: sanitizePhone(formInfos.phone) });
               if (!parsed.success) {
                 const fe: Record<string,string> = {};
@@ -114,7 +67,7 @@ export default function Form({ formtype }: FormProp) {
               }
               const v = parsed.data;
               payload = { fname: v.fname, lname: v.lname, email: v.email, password: v.password, phone: v.phone || undefined, sliqId: formInfos.sliqId?.trim() || undefined, refCode: formInfos.refCode?.trim() || undefined };
-            } else if (formtype === "login") {
+            } else if (isLogin) {
               const parsed = loginSchema.safeParse({ email: formInfos.email, password: formInfos.password });
               if (!parsed.success) {
                 const fe: Record<string,string> = {};
@@ -124,10 +77,8 @@ export default function Form({ formtype }: FormProp) {
                 setErrorMsg("Please fix the highlighted fields");
                 return;
               }
-              const v = parsed.data;
-              payload = { email: v.email, password: v.password };
+              payload = { email: parsed.data.email, password: parsed.data.password };
             } else {
-              // forgot
               const emailOnly = z.object({ email: z.string().trim().email("Enter a valid email address") });
               const parsed = emailOnly.safeParse({ email: formInfos.email });
               if (!parsed.success) {
@@ -141,20 +92,16 @@ export default function Form({ formtype }: FormProp) {
               payload = { email: parsed.data.email };
             }
 
-            // Call backend API
-            const endpoint = formtype === 'signup' ? '/auth/signup' : formtype === 'login' ? '/auth/login' : '/auth/forgotpassword';
+            const endpoint = isSignup ? '/auth/signup' : isLogin ? '/auth/login' : '/auth/forgotpassword';
             const response = await api(endpoint, { method: 'POST', body: JSON.stringify(payload) });
             
-            // Handle response
-            if (formtype === 'forgot') {
-              setSuccessMsg('If the email exists, a reset link has been sent. Please check your inbox.');
+            if (isForgot) {
+              setSuccessMsg('If the email exists, a reset link has been sent.');
               return;
             }
             
-            // For signup and login, show success and redirect
             setFormInfos({ fname: "", lname: "", email: "", phone: "", password: "", cPassword: "", refCode: "", sliqId: "" });
 
-            // Store user data if returned - use correct storage format
             if (response?.user) {
               const userData = {
                 sliqId: response.user.sliqId || '',
@@ -166,267 +113,277 @@ export default function Form({ formtype }: FormProp) {
                 walletType: response.user.walletType || undefined,
               };
               localStorage.setItem('sliqpay_user', JSON.stringify(userData));
-              // Store JWT token for Bearer auth (cross-origin)
-              if (response?.token) {
-                localStorage.setItem('sliqpay_token', response.token);
-              }
-              // Set a frontend-domain cookie so Next.js middleware can detect the session
+              if (response?.token) localStorage.setItem('sliqpay_token', response.token);
               document.cookie = `sliqpay_logged_in=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-              // Immediately update UserContext so it's available on next page
               setUser(userData);
             }
 
-            // Different redirect paths for signup vs login
-            if (formtype === 'signup') {
+            if (isSignup) {
               setSuccessMsg('Account created! Setting up your wallet...');
-              setTimeout(() => {
-                router.push('/dashboard');
-              }, 1000);
             } else {
-              setSuccessMsg('Login successful! Redirecting to dashboard...');
-              setTimeout(() => {
-                router.push('/dashboard');
-              }, 1000);
+              setSuccessMsg('Login successful! Redirecting...');
             }
+            setTimeout(() => router.push('/dashboard'), 1000);
         } catch (err: any) {
             const message = err.message || 'Something went wrong';
-            toast({
-                title: "Error",
-                description: message,
-                variant: "destructive",
-            });
+            toast({ title: "Error", description: message, variant: "destructive" });
+            setErrorMsg(message);
         } finally {
             setLoading(false);
         }
     };
 
+    const inputClasses = (field: string) =>
+      `w-full rounded-xl px-4 py-3.5 pl-11 outline-none transition-all duration-200 text-sm font-medium bg-gray-50 dark:bg-white/5 border ${
+        fieldErrors[field]
+          ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+          : 'border-gray-200 dark:border-white/10 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+      } text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500`;
+
     return (
-        <div className="min-h-screen bg-[#f7fbff] relative flex flex-col justify-center items-center p-6">
-        {/* subtle decorative background for auth pages */}
-        {formtype === 'login' && (
-            <>
-              <div className="pointer-events-none absolute -top-10 right-[-20%] h-64 w-64 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#d9f3ff] to-transparent blur-2xl opacity-70"/>
-              <div className="pointer-events-none absolute top-24 left-[-20%] h-56 w-56 rounded-full bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#e6fff3] to-transparent blur-2xl opacity-70"/>
-            </>
-        )}
-        {/* Show render errors if any */}
-        {renderError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 max-w-md mx-auto">
-                <p><strong>Error rendering form:</strong> {renderError}</p>
+        <div className="min-h-screen flex flex-col bg-[#f8fafb] dark:bg-[#080b12]">
+            {/* Background effects */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-emerald-500/5 via-teal-500/3 to-transparent rounded-full blur-3xl" />
+                <div className="absolute bottom-0 right-0 w-96 h-96 bg-violet-500/3 rounded-full blur-3xl" />
             </div>
-        )}
-        
-        {/* Use next/image or ensure image is properly deployed */}
-        <img
-            src="/Sliqpayvisual12.png"
-            alt="SliqPay"
-            className={`mb-4 ${formtype === 'login' ? 'h-6 self-start w-auto absolute left-6 top-6' : 'h-12 mx-auto'}`}
-            onError={(e) => {
-                e.currentTarget.onerror = null; 
-                e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='32' viewBox='0 0 100 32'%3E%3Crect width='100' height='32' fill='%23eee'/%3E%3Ctext x='50' y='20' font-family='Arial' font-size='12' text-anchor='middle' fill='%23333'%3ESliqPay%3C/text%3E%3C/svg%3E";
-                console.error("Failed to load image");
-            }}
-        />
-        <form onSubmit={onSubmit} className="px-6 pt-6 pb-8 w-full max-w-md bg-white shadow-sm rounded-2xl border border-gray-100">
-            <div className="text-center mb-6">
-                <h1 className="text-2xl font-extrabold mb-1 tracking-tight">{formtype === 'login' ? 'Welcome Back' : title}</h1>
-                <p className="text-sm text-gray-500">{formtype === 'login' ? 'Sign In to continue' : subtitle}</p>
-            </div>
-            {errorMsg && <p className="text-sm text-red-600 mb-4" role="alert">{errorMsg}</p>}
-            {successMsg && <p className="text-sm text-green-600 mb-4" role="status">{successMsg}</p>}
 
-            {showField("fname") && (
-            <div className="mb-4">
-                <label className="block text-gray-700 text-sm mb-2">First Name</label>
-                <input
-                    type="text"
-                    className="w-full border rounded px-3 py-3"
-                    placeholder="John"
-                    value={formInfos.fname}
-                    onChange={(e) =>
-                        setFormInfos({ ...formInfos, fname: e.target.value })
-                    }
-                />
-                {fieldErrors.fname && <p className="text-xs text-red-600 mt-1">{fieldErrors.fname}</p>}
+            {/* Top bar with logo */}
+            <div className="relative z-10 px-6 pt-6">
+                <Link href="/" className="inline-flex items-center gap-2 group">
+                    <img src="/Sliqpay visual icon.png" alt="SliqPay" className="w-8 h-8 object-contain" />
+                    <span className="text-lg font-bold bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">
+                        SliqPay
+                    </span>
+                </Link>
             </div>
-            )}
 
-            {showField("lname") && (
-            <div className="mb-4">
-                <label className="block text-gray-700 text-sm mb-2">Last Name</label>
-                <input
-                type="text"
-                className="w-full border rounded px-3 py-3"
-                placeholder="Doe"
-                value={formInfos.lname}
-                onChange={(e) =>
-                    setFormInfos({ ...formInfos, lname: e.target.value })
-                }
-            />
-            {fieldErrors.lname && <p className="text-xs text-red-600 mt-1">{fieldErrors.lname}</p>}
-            </div>
-            )}
-
-            {showField("email") && (
-            <div className="mb-4">
-                <label className="block text-gray-700 text-sm mb-2">Email</label>
-                <input
-                type="email"
-                className={`w-full rounded-xl px-4 py-3 outline-none transition border text-gray-900 ${formtype==='login' ? 'bg-gray-100 border-gray-200 focus:border-gray-300' : 'border-gray-300 focus:border-gray-400'}`}
-                placeholder={formtype==='login' ? 'Olabunmi@sampleemail.com' : 'john@example.com'}
-                value={formInfos.email}
-                onChange={(e) =>
-                    setFormInfos({ ...formInfos, email: e.target.value })
-                }
-            />
-            {fieldErrors.email && <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>}
-            </div>
-            )}
-
-            {showField("phone") && (
-            <div className="mb-4">
-                <label className="block text-gray-700 text-sm mb-2">Phone Number</label>
-                <input
-                type="tel"
-                className="w-full border rounded px-3 py-3"
-                placeholder="+2348012345678"
-                value={formInfos.phone}
-                onChange={(e) => setFormInfos({ ...formInfos, phone: e.target.value })}
-                inputMode="tel"
-                autoComplete="tel"
-                />
-                {fieldErrors.phone && <p className="text-xs text-red-600 mt-1">{fieldErrors.phone}</p>}
-            </div>
-            )}
-
-            {showField("sliqId") && (
-            <div className="mb-4">
-                <label className="block text-gray-700 text-sm mb-2">Sliq ID / Username <span className="text-gray-400 font-normal">(Optional)</span></label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    className="w-full border rounded px-3 py-3 pl-8"
-                    placeholder="e.g. swift_trader"
-                    value={formInfos.sliqId}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z0-9_-]/g, '');
-                      setFormInfos({ ...formInfos, sliqId: cleaned.toLowerCase() });
-                    }}
-                    maxLength={30}
-                  />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">@</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">Leave blank to auto-generate. Letters, numbers, - and _ only.</p>
-                {fieldErrors.sliqId && <p className="text-xs text-red-600 mt-1">{fieldErrors.sliqId}</p>}
-            </div>
-            )}
-
-                        {showField("password") && (
-                        <div className="mb-4">
-                                <label className="block text-gray-700 text-sm mb-2">Password</label>
-                                <div className="relative">
-                                    <input
-                                        type={showPassword ? 'text' : 'password'}
-                                        className={`w-full rounded-xl px-4 py-3 pr-10 outline-none transition border text-gray-900 ${formtype==='login' ? 'bg-gray-100 border-gray-200 focus:border-gray-300' : 'border-gray-300 focus:border-gray-400'}`}
-                                        placeholder={formtype==='login' ? '****************' : '••••••••'}
-                                        value={formInfos.password}
-                                        onChange={(e) =>
-                                            setFormInfos({ ...formInfos, password: e.target.value })
-                                        }
-                                    />
-                                    {formtype === 'login' && (
-                                        <button
-                                            type="button"
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                                            onClick={() => setShowPassword((v) => !v)}
-                                            aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                        >
-                                            {showPassword ? (
-                                                /* eye-off */
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3l18 18"/><path d="M10.58 10.58a2 2 0 102.83 2.83"/><path d="M16.24 16.24A8.45 8.45 0 0112 18c-5 0-9-6-9-6a16.9 16.9 0 014.22-4.22"/><path d="M14.12 9.88A2 2 0 0012 8a2 2 0 00-2 2"/><path d="M19.78 8.22A16.9 16.9 0 0121 12s-4 6-9 6a8.49 8.49 0 01-3.5-.74"/></svg>
-                                            ) : (
-                                                /* eye */
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
-                                            )}
-                                        </button>
-                                    )}
-                                </div>
-                                {fieldErrors.password && <p className="text-xs text-red-600 mt-1">{fieldErrors.password}</p>}
+            {/* Main form area */}
+            <div className="relative z-10 flex-1 flex items-center justify-center px-5 py-8">
+                <div className="w-full max-w-[420px]">
+                    {/* Header */}
+                    <div className="text-center mb-8">
+                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-400 shadow-lg shadow-emerald-500/20 mb-5">
+                            {isLogin ? <Lock className="w-6 h-6 text-white" /> : isSignup ? <User className="w-6 h-6 text-white" /> : <Mail className="w-6 h-6 text-white" />}
                         </div>
-                        )}
+                        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 dark:text-white">
+                            {isLogin ? 'Welcome back' : isSignup ? 'Create your account' : 'Reset password'}
+                        </h1>
+                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            {isLogin ? 'Sign in to access your dashboard' : isSignup ? 'Join thousands using SliqPay for bill payments' : 'Enter your email to receive a reset link'}
+                        </p>
+                    </div>
 
-            {showField("cPassword") && (
-            <div className="mb-4">
-                <label className="block text-gray-700 text-sm mb-2">Confirm Password</label>
-                <input
-                type="password"
-                className="w-full border rounded px-3 py-3"
-                placeholder="••••••••"
-                value={formInfos.cPassword}
-                onChange={(e) =>
-                    setFormInfos({ ...formInfos, cPassword: e.target.value })
-                }
-            />
-            {fieldErrors.cPassword && <p className="text-xs text-red-600 mt-1">{fieldErrors.cPassword}</p>}
-            </div>
-            )}
+                    {/* Error/Success */}
+                    {errorMsg && (
+                        <div className="mb-5 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+                            {errorMsg}
+                        </div>
+                    )}
+                    {successMsg && (
+                        <div className="mb-5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {successMsg}
+                        </div>
+                    )}
 
-            {showField("refCode") && (
-            <div className="mb-4">
-                <label className="block text-gray-700 text-sm mb-2">Referral Code (Optional)</label>
-                <input
-                type="text"
-                className="w-full border rounded px-3 py-3"
-                placeholder="REF123"
-                value={formInfos.refCode}
-                onChange={(e) =>
-                    setFormInfos({ ...formInfos, refCode: e.target.value })
-                }
-            />
-            </div>
-            )}
-
-                        {formtype === 'login' && (
-                            <div className="mb-4 mt-2 flex items-center justify-between text-sm">
-                                <label className="inline-flex items-center gap-2 select-none">
-                                    <input type="checkbox" className="h-4 w-4 rounded border-gray-300" checked={rememberMe} onChange={(e)=>setRememberMe(e.target.checked)} />
-                                    <span className="text-gray-700">Remember me</span>
-                                </label>
-                                <a href="/auth/forgotpassword" className="text-blue-500 hover:underline">Forgot Password</a>
+                    {/* Form card */}
+                    <form onSubmit={onSubmit} className="bg-white dark:bg-white/[0.02] rounded-2xl border border-gray-200/80 dark:border-white/[0.06] p-6 shadow-sm space-y-4">
+                        
+                        {/* Name row for signup */}
+                        {isSignup && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">First Name</label>
+                                    <div className="relative">
+                                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            className={inputClasses('fname')}
+                                            placeholder="John"
+                                            value={formInfos.fname}
+                                            onChange={(e) => setFormInfos({ ...formInfos, fname: e.target.value })}
+                                        />
+                                    </div>
+                                    {fieldErrors.fname && <p className="text-xs text-red-500 mt-1">{fieldErrors.fname}</p>}
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Last Name</label>
+                                    <div className="relative">
+                                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            className={inputClasses('lname')}
+                                            placeholder="Doe"
+                                            value={formInfos.lname}
+                                            onChange={(e) => setFormInfos({ ...formInfos, lname: e.target.value })}
+                                        />
+                                    </div>
+                                    {fieldErrors.lname && <p className="text-xs text-red-500 mt-1">{fieldErrors.lname}</p>}
+                                </div>
                             </div>
                         )}
 
+                        {/* Email */}
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Email Address</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="email"
+                                    className={inputClasses('email')}
+                                    placeholder="you@example.com"
+                                    value={formInfos.email}
+                                    onChange={(e) => setFormInfos({ ...formInfos, email: e.target.value })}
+                                />
+                            </div>
+                            {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
+                        </div>
+
+                        {/* Phone (signup only) */}
+                        {isSignup && (
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Phone Number</label>
+                                <div className="relative">
+                                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type="tel"
+                                        className={inputClasses('phone')}
+                                        placeholder="+2348012345678"
+                                        value={formInfos.phone}
+                                        onChange={(e) => setFormInfos({ ...formInfos, phone: e.target.value })}
+                                        inputMode="tel"
+                                    />
+                                </div>
+                                {fieldErrors.phone && <p className="text-xs text-red-500 mt-1">{fieldErrors.phone}</p>}
+                            </div>
+                        )}
+
+                        {/* SliqID (signup only) */}
+                        {isSignup && (
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+                                    SliqID <span className="text-gray-400 font-normal">(optional)</span>
+                                </label>
+                                <div className="relative">
+                                    <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        className={inputClasses('sliqId')}
+                                        placeholder="swift_trader"
+                                        value={formInfos.sliqId}
+                                        onChange={(e) => {
+                                            const cleaned = e.target.value.replace(/[^a-zA-Z0-9_-]/g, '');
+                                            setFormInfos({ ...formInfos, sliqId: cleaned.toLowerCase() });
+                                        }}
+                                        maxLength={30}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Password */}
+                        {!isForgot && (
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">Password</label>
+                                    {isLogin && (
+                                        <Link href="/auth/forgotpassword" className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700">
+                                            Forgot password?
+                                        </Link>
+                                    )}
+                                </div>
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        className={`${inputClasses('password')} pr-11`}
+                                        placeholder="••••••••"
+                                        value={formInfos.password}
+                                        onChange={(e) => setFormInfos({ ...formInfos, password: e.target.value })}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                                        onClick={() => setShowPassword(v => !v)}
+                                    >
+                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                                {fieldErrors.password && <p className="text-xs text-red-500 mt-1">{fieldErrors.password}</p>}
+                            </div>
+                        )}
+
+                        {/* Confirm Password (signup only) */}
+                        {isSignup && (
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Confirm Password</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type={showConfirmPassword ? 'text' : 'password'}
+                                        className={`${inputClasses('cPassword')} pr-11`}
+                                        placeholder="••••••••"
+                                        value={formInfos.cPassword}
+                                        onChange={(e) => setFormInfos({ ...formInfos, cPassword: e.target.value })}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                        onClick={() => setShowConfirmPassword(v => !v)}
+                                    >
+                                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                                {fieldErrors.cPassword && <p className="text-xs text-red-500 mt-1">{fieldErrors.cPassword}</p>}
+                            </div>
+                        )}
+
+                        {/* Referral (signup only) */}
+                        {isSignup && (
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
+                                    Referral Code <span className="text-gray-400 font-normal">(optional)</span>
+                                </label>
+                                <div className="relative">
+                                    <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        className={inputClasses('refCode')}
+                                        placeholder="REF123"
+                                        value={formInfos.refCode}
+                                        onChange={(e) => setFormInfos({ ...formInfos, refCode: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Submit button */}
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-green-600 text-white py-3 px-4 rounded-xl font-medium shadow-sm hover:bg-green-700 transition-colors disabled:opacity-60"
+                            className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-600 hover:to-teal-500 text-white py-3.5 font-semibold text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            {loading ? 'Please wait...' : (formtype === 'login' ? 'Continue' : formtype === 'signup' ? 'Create Account' : 'Reset Password')}
+                            {loading ? (
+                                <><Loader2 className="w-4 h-4 animate-spin" /> Please wait...</>
+                            ) : (
+                                <>{isLogin ? 'Sign In' : isSignup ? 'Create Account' : 'Send Reset Link'}<ArrowRight className="w-4 h-4" /></>
+                            )}
                         </button>
+                    </form>
 
-            <div className="text-center mt-4">
-            {formtype === "signup" ? (
-                <p className="text-sm text-gray-600">
-                Already have an account?{" "}
-                <a href="/auth/login" className="text-green-600 hover:underline">
-                    Sign in
-                </a>
-                </p>
-            ) : formtype === "login" ? (
-                <p className="text-sm text-gray-600">
-                  Don't have an account?{" "}
-                  <a href="/auth/signup" className="text-green-600 hover:underline">Signup</a>
-                </p>
-            ) : (
-                <p className="text-sm text-gray-600">
-                Remember your password?{" "}
-                <a href="/auth/login" className="text-green-600 hover:underline">
-                    Sign in
-                </a>
-                </p>
-            )}
+                    {/* Footer link */}
+                    <p className="text-center mt-6 text-sm text-gray-500 dark:text-gray-400">
+                        {isSignup ? (
+                            <>Already have an account?{' '}<Link href="/auth/login" className="font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700">Sign in</Link></>
+                        ) : isLogin ? (
+                            <>Don&apos;t have an account?{' '}<Link href="/auth/signup" className="font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700">Sign up</Link></>
+                        ) : (
+                            <>Remember your password?{' '}<Link href="/auth/login" className="font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700">Sign in</Link></>
+                        )}
+                    </p>
+                </div>
             </div>
-        </form>
         </div>
     );
 }

@@ -403,13 +403,11 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between h-[72px]">
           {/* logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25 group-hover:shadow-emerald-500/40 transition-all group-hover:scale-105">
-              <img
-                src="/Sliqpay visual icon.png"
-                alt="SliqPay"
-                className="w-6 h-6 object-contain"
-              />
-            </div>
+            <img
+              src="/Sliqpay visual icon.png"
+              alt="SliqPay"
+              className="w-9 h-9 object-contain group-hover:scale-105 transition-transform"
+            />
             <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">
               SliqPay
             </span>
@@ -437,12 +435,6 @@ export default function LandingPage() {
             >
               {isDarkMode ? <Sun className="w-[18px] h-[18px]" /> : <Moon className="w-[18px] h-[18px]" />}
             </button>
-            <Link
-              href="/auth/login"
-              className="text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors px-4 py-2.5"
-            >
-              Log in
-            </Link>
             <Button
               asChild
               className="rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-600 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all px-6 font-semibold"
@@ -493,12 +485,6 @@ export default function LandingPage() {
                   </a>
                 ))}
                 <hr className="border-gray-200 dark:border-white/10 my-2" />
-                <Link
-                  href="/auth/login"
-                  className="text-base font-semibold text-gray-700 dark:text-gray-300 py-3 px-3"
-                >
-                  Log in
-                </Link>
                 <Button
                   asChild
                   className="rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 text-white w-full mt-2 font-semibold"
